@@ -143,10 +143,10 @@ class UBloxAssistNow {
             local body = assistMsgs.readstring(2 + bodylen);
 
             // Push message into array
-            assist.push(msg+body);
+            _assist.push(msg+body);
         }
 
-        return (assist.len() > 0);
+        return (_assist.len() > 0);
     }
 
     /**
@@ -318,7 +318,7 @@ class UBloxAssistNow {
         if (_assist.len() > 0) {
             // Remove it and send: it's pre-formatted so just dump it to the UART
             local entry = _assist.remove(0);
-            _ubx.writeAssist(entry);
+            _ubx.writeMessage(entry);
             // server.log(format("Sending %02x%02x len %d", entry[2], entry[3], entry.len()));
         } else {
             // Trigger done callback when all packets have been sent
