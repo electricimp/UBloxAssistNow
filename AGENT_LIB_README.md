@@ -84,7 +84,7 @@ MGA AssistNow Offline parameters:
 
 None.
 
-### getOfflineMsgByDate(*offlineRes[, logUnknownMsgType]*) ###
+### getOfflineMsgByDate(*offlineRes[, dayNameFormatter][,logUnknownMsgType]*) ###
 
 Takes the response from the *offline()* and returns a table of assist messages organized by date.
 
@@ -93,11 +93,28 @@ Takes the response from the *offline()* and returns a table of assist messages o
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | *offlineRes* | HTTP response | Yes | The response parameter returned from *offline()* |
+| *dayNameFormatter* | function | No | Function that takes the year, month and day bytes from a UBX-MGA-ANO message payload and formats into a file name string. |
 | *logUnknownMsgType* | bool | No | If `true` logs the message class-id if it is not an MGA-ANO message. Defaults to `false`. |
 
 #### Return Value ####
 
-Table. Keys are date strings, values are string of all messages for that date.
+Table. Keys are date strings created via the *dayNameFormatter*, values are a concatenated string of all messages for that date.
+
+### formatDayName(*year, month, day*) ###
+
+Takes the year, month and day from assist payload and formats into a date string.
+
+#### Parameters ####
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| *year* | integer | Yes | Year from assit message paylaod. |
+| *month* | integer | Yes | Month from assit message paylaod. |
+| *day* | integer | Yes | Day from assit message paylaod. |
+
+#### Return Value ####
+
+String - date formatted YYYYMMDD.
 
 ### setHeaders(*headers*) ###
 

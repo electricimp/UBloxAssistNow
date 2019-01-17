@@ -60,7 +60,7 @@ class UBloxAssistNow {
 
     // Splits offline response into messages organized by date
     // Returns a table of MGA_ANO messages, keys are date strings, values are a string of all MGA_ANO messages for that date.
-    function getOfflineMsgByDate(offlineRes, logUnknownMsgType = false) {
+    function getOfflineMsgByDate(offlineRes, dateFormatter = null, logUnknownMsgType = false) {
         if (offlineRes.statuscode != 200) return {};
 
         // Get result as a blob as we iterate through it
@@ -86,7 +86,8 @@ class UBloxAssistNow {
             if (classid == UBLOX_ASSISTNOW_UBX_MGA_ANO_CLASS_ID) {
                 // Make date string
                 // This will be for file name is SFFS is used on device
-                local d = format("%04d%02d%02d", 2000 + body[4], body[5], body[6]);
+                if (dateFormatter == null) dateFormatter = formatDateKey;
+                local d = dateFormatter(body[4], body[5], body[6]);
 
                 // New date? If so create day bucket
                 if (!(d in assist)) assist[d] <- "";
@@ -99,6 +100,15 @@ class UBloxAssistNow {
         }
 
         return assist;
+    }
+
+    /**
+     * Takes the year, month and day from assist payload and formats into a date string.
+     *
+     * @return {string} - date fromatted YYYYMMDD
+     */
+    function formatDayName(year, month, day) {
+        return format("%04d%02d%02d", 2000 + year, month, day);
     }
 
     function _sendRequest(url, svr, cb) {

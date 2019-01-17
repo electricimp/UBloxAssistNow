@@ -170,22 +170,19 @@ class UBloxAssistNow {
      * Retrieves Offline Assist messages from storage and returns the messages for today's date.
      * This method will throw an error if the class was not initialized with SPI Flash File System.
      *
+     * @param {string} fileName - table of Offline Assist messages from agent organized by date.
+     *
      * @return {blob} - stored messages for today
      */
-    function getPersistedOfflineAssist() {
+    function getPersistedOfflineAssist(fileName) {
         // We can only use offline assist if we have valid spi flash storage
         if (_sffs == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_OFFLINE_ASSIST;
 
-        // Make filename; offline assist data is valid for the UTC day (ie midpoint is midday UTC)
-        // so this is really easy
-        local d = date();
-        local dayname = format("%04d%02d%02d", d.year, d.month + 1, d.day);
-
         // Does assist file exist?
-        if (!_sffs.fileExists(dayname)) return null;
+        if (!_sffs.fileExists(fileName)) return null;
 
         // Open, then read and split into the assist send queue
-        local file = _sffs.open(dayname, "r");
+        local file = _sffs.open(fileName, "r");
         local msgs = file.read();
         file.close();
 
@@ -193,18 +190,29 @@ class UBloxAssistNow {
     }
 
     /**
-     * Stores Offline Assist messages to SPI organized by date. When messages are stored toggles flag that
+     * Uses the imp API date method to create a date string.
+     *
+     * @return {string} - date fromatted YYYYMMDD
+     */
+    function getDayName() {
+        // Make filename; offline assist data is valid for the UTC day (ie midpoint is midday UTC)
+        local d = date();
+        return format("%04d%02d%02d", d.year, d.month + 1, d.day);
+    }
+
+    /**
+     * Stores Offline Assist messages to SPI organized by file name. When messages are stored toggles flag that
      * indicates messages have been refreshed. This method will throw an error if the class was not initialized
      * with SPI Flash File System.
      *
-     * @param {table} mgaAnoMsgsByDate - table of Offline Assist messages from agent organized by date.
+     * @param {table} mgaAnoMsgsByFileName - table of Offline Assist messages from Offline Assist Web service organized by file name.
      */
-    function persistOfflineAssist(mgaAnoMsgsByDate) {
+    function persistOfflineAssist(mgaAnoMsgsByFileName) {
         // We can only use offline assist if we have valid spi flash storage
         if (_sffs == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_OFFLINE_ASSIST;
 
         // Store messages by date
-        foreach(day, msgs in mgaAnoMsgsByDate) {
+        foreach(day, msgs in mgaAnoMsgsByFileName) {
             // If day exists, delete it as new data will be fresher
             if (_sffs.fileExists(day)) {
                 _sffs.eraseFile(day);

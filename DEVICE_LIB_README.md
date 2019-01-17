@@ -81,15 +81,15 @@ None.
 
 Blob, of Offline Assist messages for today's date.
 
-### persistOfflineAssist(*mgaAnoMsgsByDate*) ###
+### persistOfflineAssist(*mgaAnoMsgsByFileName*) ###
 
-Stores Offline Assist messages to SPI organized by date. When messages are stored toggles flag that indicates messages have been refreshed. This method will throw an error if the class was not initialized with SPI Flash File System.
+Stores Offline Assist messages to SPI organized by file name. When messages are stored toggles flag that indicates messages have been refreshed. This method will throw an error if the class was not initialized with SPI Flash File System.
 
 #### Parameters ####
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
-| *mgaAnoMsgsByDate* | table | Yes | The offline assist messages returned by getOfflineMsgByDate |
+| *mgaAnoMsgsByFileName* | table | Yes | The offline assist messages organized by file name. |
 
 #### Return Value ####
 
