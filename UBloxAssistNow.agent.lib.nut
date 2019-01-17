@@ -31,6 +31,11 @@ class UBloxAssistNow {
     _token   = null;
     _headers = null;
 
+    /**
+     * Initializes Assist Now library. The constructor configures the auth that is used for all requests.
+     *
+     * @param {string} token - The authorization token supplied by u-blox when a client registers to use the service.
+     */
     constructor(token) {
         const UBLOX_ASSISTNOW_ONLINE_URL     = "https://online-%s.services.u-blox.com/GetOnlineData.ashx";
         const UBLOX_ASSISTNOW_OFFLINE_URL    = "https://offline-%s.services.u-blox.com/GetOfflineData.ashx";
@@ -42,24 +47,66 @@ class UBloxAssistNow {
         _headers = {};
     }
 
+    /**
+     * By default there are no HTTP requests headers set, the imp API's defaults will be used. Use this
+     * method to customize HTTP request headers.
+     *
+     * @param {table} headers - Table of HTTP headers.
+     */
     function setHeaders(headers) {
         _headers = headers;
     }
 
+    /**
+     * Sends HTTP request to get data from the AssistNow Online Service.
+     *
+     * @param {table} reqParams - Table of request parameters. Can be an empty table.
+     * @param {requestCallback} cb - Function that will be triggered when the response from u-blox
+     * AssistNow servers is received.
+     */
+    /**
+     * Callback to be executed when the response from u-blox AssistNow servers is received.
+     *
+     * @param {table} error - A string describing the error.
+     * @param {http::response} response - HTTP response object return from u-blox AssistNow servers.
+     * @callback requestCallback
+     */
     function online(reqParams, cb) {
         local url = format("%s?token=%s;%s",
                       UBLOX_ASSISTNOW_ONLINE_URL, _token, _formatOptions(reqParams));
         _sendRequest(url, UBLOX_ASSISTNOW_PRIMARY_SERVER, cb);
     }
 
+    /**
+     * Sends HTTP request to get data from the AssistNow Offline Service.
+     *
+     * @param {table} reqParams - Table of request parameters.
+     * @param {requestCallback} cb - Function that will be triggered when the response from u-blox
+     * AssistNow servers is received.
+     */
+    /**
+     * Callback to be executed when the response from u-blox AssistNow servers is received.
+     *
+     * @param {table} error - A string describing the error.
+     * @param {httpresponse} response - HTTP response object return from u-blox AssistNow servers.
+     * @callback requestCallback
+     */
     function offline(reqParams, cb) {
         local url = format("%s?token=%s;%s",
                       UBLOX_ASSISTNOW_OFFLINE_URL, _token, _formatOptions(reqParams));
         _sendRequest(url, UBLOX_ASSISTNOW_PRIMARY_SERVER, cb);
     }
 
-    // Splits offline response into messages organized by date
-    // Returns a table of MGA_ANO messages, keys are date strings, values are a string of all MGA_ANO messages for that date.
+    /**
+     * Splits offline response into UBX-MGA-ANO messages organized by date using the specified
+     * formatting function.
+     *
+     * @param {httpresponse} offlineRes - HTTP response object received from AssistNow Offline Service.
+     * @param {requestCallback} dateFormatter - Function that takes year, month and day bits and returns
+     * a string used as the table slot for all messages containing the same date.
+     * @param {bool} logUnknownMsgType - Whether to log message class-id if data contains messages
+     * other than UBX-MGA-ANO.
+     */
     function getOfflineMsgByDate(offlineRes, dateFormatter = null, logUnknownMsgType = false) {
         if (offlineRes.statuscode != 200) return {};
 
@@ -103,7 +150,8 @@ class UBloxAssistNow {
     }
 
     /**
-     * Takes the year, month and day from assist payload and formats into a date string.
+     * Takes the year, month and day from from AssistNow Offline Service payload and formats into a
+     * date string.
      *
      * @return {string} - date fromatted YYYYMMDD
      */
@@ -111,11 +159,13 @@ class UBloxAssistNow {
         return format("%04d%02d%02d", 2000 + year, month, day);
     }
 
+    // Helper that sends HTTP get requests.
     function _sendRequest(url, svr, cb) {
         local req = http.get(format(url, svr), _headers);
         req.sendasync(_respFactory(svr));
     }
 
+    // Helper that returns response handler for HTTP requests.
     function _respFactory(url, svr, cb) {
         // Return a process response function
         return function(resp) {
@@ -139,6 +189,7 @@ class UBloxAssistNow {
         }.bindenv(this);
     }
 
+    // Helper that formats request parameters. Note the required format is not quite URL encode.
     function _formatOptions(opts) {
         local encoded = "";
         foreach(k, v in opts) {

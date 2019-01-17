@@ -118,7 +118,7 @@ String - date formatted YYYYMMDD.
 
 ### setHeaders(*headers*) ###
 
-By default there are no requests headers set. Use this method to update request headers.
+By default there are no HTTP requests headers set, the imp API's defaults will be used. Use this method to customize HTTP request headers.
 
 #### Parameters ####
 
