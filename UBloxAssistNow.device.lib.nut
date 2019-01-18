@@ -22,7 +22,6 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
 
-
 enum UBLOX_ASSIST_NOW_CONST {
     MGA_ACK_CLASS_ID                     = 0x1360,
     MON_VER_CLASS_ID                     = 0x0a04,
@@ -38,7 +37,7 @@ enum UBLOX_ASSIST_NOW_CONST {
     CFG_NAVX5_MSG_MASK_1_SET_ASSIST_ACK  = 0x0400,
     CFG_NAVX5_MSG_ENABLE_ASSIST_ACK      = 0x01,
 
-    ERROR_PROTOCOL_VERSION_NOT SUPPORTED = "Error: Protocol version not supported",
+    ERROR_PROTOCOL_VERSION_NOT_SUPPORTED = "Error: Protocol version not supported",
     ERROR_OFFLINE_ASSIST                 = "Error: Offline assist requires spi flash file system",
     ERROR_UBLOX_M8N_REQUIRED             = "Error: UBloxM8N and UbxMsgParser required",
 }
@@ -46,8 +45,10 @@ enum UBLOX_ASSIST_NOW_CONST {
 // This class wraps some of the commands as defined by [Reciever Description Including Protocol Specification document](https://www.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_%28UBX-13003221%29_Public.pdf)
 
 /**
- * The device-side library for managing Ublox Assist Now messages that help Ublox M8N get a fix faster. This class is dependent on the UBloxM8N and UbxMsgParser libraries.
- * If Assist Offline is used this library also requires Spi Flash File System library.
+ * The device-side library for managing Ublox Assist Now messages that help Ublox M8N get a fix
+ * faster. This class is dependent on the UBloxM8N and UbxMsgParser libraries. If Assist Offline
+ * is used this library also requires Spi Flash File System library. This class wraps some of
+ * the commands as defined by [Reciever Description Including Protocol Specification document](https://www.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_%28UBX-13003221%29_Public.pdf)
  *
  * @class
  */
@@ -289,7 +290,7 @@ class UBloxAssistNow {
             if ("protver" in _monVer) {
                 // Confirm protocol version is supported
                 local ver = _getCfgNavx5MsgVersion(_monVer.protver);
-                if (ver == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_INVALID_PROTOCOL_VERSION_NOT SUPPORTED;
+                if (ver == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_INVALID_PROTOCOL_VERSION_NOT_SUPPORTED;
 
                 // Create payload to enable ACKs for aiding packets
                 local payload = (ver == UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3) ? blob(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3_LEN) : blob(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_0_2_LEN);
@@ -304,7 +305,7 @@ class UBloxAssistNow {
                 ubx.writeUBX(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_CLASS_ID, payload);
             } else {
                 // We cannot create a payload without knowing the protversion
-                throw UBLOX_ASSIST_NOW_CONST.ERROR_INVALID_PROTOCOL_VERSION_NOT SUPPORTED;
+                throw UBLOX_ASSIST_NOW_CONST.ERROR_INVALID_PROTOCOL_VERSION_NOT_SUPPORTED;
             }
         }
     }
