@@ -166,7 +166,7 @@ class UBloxAssistNow {
      * Callback to be executed when all assist messages have been written to Ublox module.
      *
      * @callback onAssistWriteDoneCallback
-     * @param {error[]/null} errors - Null if no errors were found, otherwise a array of error tables.
+     * @param {Error[]|null} errors - Null if no errors were found, otherwise a array of error tables.
      */
     // TODO: I would probably rename this to just `write`
     function startAssistWrite(onDone = null) {
