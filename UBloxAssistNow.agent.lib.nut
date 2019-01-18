@@ -22,6 +22,14 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
 
+// TODO: the URLs may need to be configurable
+// TODO: would probably worth moving them to under a enum namespace, `__UBLOX` for example
+const UBLOX_ASSISTNOW_ONLINE_URL            = "https://online-%s.services.u-blox.com/GetOnlineData.ashx";
+const UBLOX_ASSISTNOW_OFFLINE_URL           = "https://offline-%s.services.u-blox.com/GetOfflineData.ashx";
+const UBLOX_ASSISTNOW_PRIMARY_SERVER        = "live1";
+const UBLOX_ASSISTNOW_BACKUP_SERVER         = "live2";
+const UBLOX_ASSISTNOW_UBX_MGA_ANO_CLASS_ID  = 0x1320;
+
 // https://www.u-blox.com/sites/default/files/products/documents/MultiGNSS-Assistance_UserGuide_%28UBX-13004360%29.pdf
 // MGA access tokens - http://www.u-blox.com/services-form.html
 class UBloxAssistNow {
@@ -37,12 +45,6 @@ class UBloxAssistNow {
      * @param {string} token - The authorization token supplied by u-blox when a client registers to use the service.
      */
     constructor(token) {
-        const UBLOX_ASSISTNOW_ONLINE_URL     = "https://online-%s.services.u-blox.com/GetOnlineData.ashx";
-        const UBLOX_ASSISTNOW_OFFLINE_URL    = "https://offline-%s.services.u-blox.com/GetOfflineData.ashx";
-        const UBLOX_ASSISTNOW_PRIMARY_SERVER = "live1";
-        const UBLOX_ASSISTNOW_BACKUP_SERVER  = "live2";
-        const UBLOX_ASSISTNOW_UBX_MGA_ANO_CLASS_ID = 0x1320;
-
         _token   = token;
         _headers = {};
     }
@@ -67,9 +69,9 @@ class UBloxAssistNow {
     /**
      * Callback to be executed when the response from u-blox AssistNow servers is received.
      *
+     * @callback requestCallback
      * @param {table} error - A string describing the error.
      * @param {http::response} response - HTTP response object return from u-blox AssistNow servers.
-     * @callback requestCallback
      */
     function online(reqParams, cb) {
         local url = format("%s?token=%s;%s",
@@ -161,6 +163,7 @@ class UBloxAssistNow {
 
     // Helper that sends HTTP get requests.
     function _sendRequest(url, svr, cb) {
+        // TODO: do we really want to use GET for all the requests
         local req = http.get(format(url, svr), _headers);
         req.sendasync(_respFactory(svr));
     }
@@ -172,6 +175,7 @@ class UBloxAssistNow {
             local status = resp.statuscode;
             local err = null;
 
+            // TODO: too many requests is 429
             if (status == 403) {
                 err = "ERROR: Overload limit reached.";
             } else if (status < 200 || status >= 300) {

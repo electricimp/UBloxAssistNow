@@ -22,6 +22,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
 
+// TODO: I would probably rename the enum to `__UBLOX`
 enum UBLOX_ASSIST_NOW_CONST {
     MGA_ACK_CLASS_ID                     = 0x1360,
     MON_VER_CLASS_ID                     = 0x0a04,
@@ -101,15 +102,15 @@ class UBloxAssistNow {
         _init();
     }
 
+
+    // TODO: please follow this format of comments
     /**
-     * Returns the parsed payload from the last MON-VER message
-     *
-     * @return {table}
-     *      @tableEntry {integer} type - Type of acknowledgment: 0 = The message was not
+     * @typedef {table} Parsed_MON_VER_Payload
+     * @property {integer} type - Type of acknowledgment: 0 = The message was not
      *          used by the receiver (see infoCode field for an indication of why), 1 = The
      *          message was accepted for use by the receiver (the infoCode field will be 0)
-     *      @tableEntry {integer} version - Message version (0x00 for this version)
-     *      @tableEntry {integer} infoCode - Provides greater information on what the
+     * @property  {integer} version - Message version (0x00 for this version)
+     * @property  {integer} infoCode - Provides greater information on what the
      *          receiver chose to do with the message contents: 0 = The receiver accepted
      *          the data, 1 = The receiver doesn't know the time so can't use the data
      *          (To resolve this a UBX-MGA-INITIME_UTC message should be supplied first),
@@ -117,9 +118,13 @@ class UBloxAssistNow {
      *          size does not match the message version, 4 = The message data could not be
      *          stored to the database, 5 = The receiver is not ready to use the message
      *          data, 6 = The message type is unknown
-     *      @tableEntry {integer} msgId - UBX message ID of the ack'ed message
-     *      @tableEntry {blob} msgPayloadStart - The first 4 bytes of the ack'ed message's
-     *          payload
+     * @property  {integer} msgId - UBX message ID of the ack'ed message
+     * @property  {blob} msgPayloadStart - The first 4 bytes of the ack'ed message's payload
+     */
+    /**
+     * Returns the parsed payload from the last MON-VER message
+     *
+     * @return {Parsed_MON_VER_Payload}
      */
     function getMonVer() {
         return _monVer;
@@ -132,6 +137,7 @@ class UBloxAssistNow {
      *
      * @return {bool} - if assist queue has any messages
      */
+    // TODO we should probably explain it a little bit in the documentation. I feel like `setCurrent...` makes more sense as a name.
     function updateAssistQueue(assistMsgs) {
         if (assistMsgs == null) return false;
 
@@ -144,7 +150,7 @@ class UBloxAssistNow {
             local body = assistMsgs.readstring(2 + bodylen);
 
             // Push message into array
-            _assist.push(msg+body);
+            _assist.push(msg + body);
         }
 
         return (_assist.len() > 0);
@@ -159,9 +165,10 @@ class UBloxAssistNow {
     /**
      * Callback to be executed when all assist messages have been written to Ublox module.
      *
-     * @param {error[]/null} errors - Null if no errors were found, otherwise a array of error tables.
      * @callback onAssistWriteDoneCallback
+     * @param {error[]/null} errors - Null if no errors were found, otherwise a array of error tables.
      */
+    // TODO: I would probably rename this to just `write`
     function startAssistWrite(onDone = null) {
         _assistDone = onDone;
         _writeAssist();
@@ -173,8 +180,9 @@ class UBloxAssistNow {
      *
      * @param {string} fileName - table of Offline Assist messages from agent organized by date.
      *
-     * @return {blob} - stored messages for today
+     * @return {blob} - stored messages for the file specified
      */
+    // TODO: rename to `getOfflineMsgs`
     function getPersistedOfflineAssist(fileName) {
         // We can only use offline assist if we have valid spi flash storage
         if (_sffs == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_OFFLINE_ASSIST;
@@ -195,6 +203,7 @@ class UBloxAssistNow {
      *
      * @return {string} - date fromatted YYYYMMDD
      */
+    // TODO: `getDayName`->'getDateString()', it's actually returning the date string
     function getDayName() {
         // Make filename; offline assist data is valid for the UTC day (ie midpoint is midday UTC)
         local d = date();
@@ -208,6 +217,8 @@ class UBloxAssistNow {
      *
      * @param {table} mgaAnoMsgsByFileName - table of Offline Assist messages from Offline Assist Web service organized by file name.
      */
+    // TODO: I would rename `mgaAnoMsgsByFileName` to `MGA_ANO_MsgsByFileName`
+    // TORO: `persistOfflineAssist` -> `persistOfflineMsgs`
     function persistOfflineAssist(mgaAnoMsgsByFileName) {
         // We can only use offline assist if we have valid spi flash storage
         if (_sffs == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_OFFLINE_ASSIST;
@@ -243,7 +254,7 @@ class UBloxAssistNow {
     // 0x0a04 can be retrived using getMonVer function.
     function _init() {
         // Register handlers
-        _ubx.registerMsgHandler(UBLOX_ASSIST_NOW_CONST.MON_VER_CLASS_ID,_monVerMsgHandler.bindenv(this));
+        _ubx.registerMsgHandler(UBLOX_ASSIST_NOW_CONST.MON_VER_CLASS_ID, _monVerMsgHandler.bindenv(this));
         _ubx.registerMsgHandler(UBLOX_ASSIST_NOW_CONST.MGA_ACK_CLASS_ID, _mgaAckMsgHandler.bindenv(this));
 
         // Test GPS up and get protocol version
@@ -261,16 +272,24 @@ class UBloxAssistNow {
             switch(res.infoCode) {
                 case 1:
                     err.desc <- "Error: GNSS Assistance message can't be used. Receiver doesn't know the time.";
+                    break;
                 case 2:
                     err.desc <- "Error: GNSS Assistance message version not supported by receiver";
+                    break;
                 case 3:
                     err.desc <- "Error: GNSS Assistance message size does not match message version";
+                    break;
                 case 4:
                     err.desc <- "Error: GNSS Assistance message data could not be stored";
+                    break;
                 case 5:
                     err.desc <- "Error: Receiver not ready to use GNSS Assistance message";
+                    break;
                 case 6:
                     err.desc <- "Error: GNSS Assistance message type unknown";
+                    break;
+                default:
+                    err.desc <- "Error: Undefined";
             }
             _assistErrors.push(err);
         }
@@ -293,7 +312,9 @@ class UBloxAssistNow {
                 if (ver == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_INVALID_PROTOCOL_VERSION_NOT_SUPPORTED;
 
                 // Create payload to enable ACKs for aiding packets
-                local payload = (ver == UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3) ? blob(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3_LEN) : blob(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_0_2_LEN);
+                local payload = (ver == UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3) ?
+                    blob(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3_LEN) :
+                    blob(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_0_2_LEN);
                 payload.writen(ver, 'w');
                 // Set mask bits so only ACK bits are modified
                 payload.writen(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_MASK_1_SET_ASSIST_ACK, 'w');
