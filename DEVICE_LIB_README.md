@@ -40,24 +40,26 @@ A table.
 | *infoCode* | integer | Provides greater information on what the receiver chose to do with the message contents: 0 = The receiver accepted the data, 1 = The receiver doesn't know the time so can't use the data (To resolve this a UBX-MGA-INITIME_UTC message should be supplied first), 2 = The message version is not supported by the receiver, 3 = The message size does not match the message version, 4 = The message data could not be stored to the database, 5 = The receiver is not ready to use the message data, 6 = The message type is unknown. |
 | *msgId* | integer | UBX message ID of the ack'ed message. |
 | *msgPayloadStart* | blob | The first 4 bytes of the ack'ed message's payload. |
+| *error* | string/null | Error message if parsing error was encountered or `null`. |
+| *payload* | blob | The unparsed payload. |
 
-### updateAssistQueue(*assistMsgs*) ###
+### setCurrent(*assistMsgs*) ###
 
-Updates assist message queue.
+Takes a blob of binary messages, splits them into individual messages that are then stored in the currrent message queue, ready to be written to the u-blox module when sendCurrent method is called.
 
 #### Parameters ####
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
-| *assistMsgs* | blob | Yes | Takes message blob from Online Assist message from agent or persisted Offline Assist. |
+| *assistMsgs* | blob | Yes | Takes blob of messages from AssistNow Online web request or the persisted AssistNow Offline messages for today's date. |
 
 #### Return Value ####
 
-A boolean, if assist queue has any messages.
+A boolean, if there are any current messages to be sent.
 
-### startAssistWrite(*[onDone]*) ###
+### sendCurrent(*[onDone]*) ###
 
-Starts to write assist message queue to Ublox module.
+Begins the loop that writes the current assist message queue to u-blox module.
 
 #### Parameters ####
 
@@ -69,19 +71,7 @@ Starts to write assist message queue to Ublox module.
 
 None.
 
-### getPersistedOfflineAssist() ###
-
-Retrieves Offline Assist messages from storage and returns the messages for today's date. This method will throw an error if the class was not initialized with SPI Flash File System.
-
-#### Parameters ####
-
-None.
-
-#### Return Value ####
-
-Blob, of Offline Assist messages for today's date.
-
-### persistOfflineAssist(*mgaAnoMsgsByFileName*) ###
+### persistOfflineMsgs(*msgsByFileName*) ###
 
 Stores Offline Assist messages to SPI organized by file name. When messages are stored toggles flag that indicates messages have been refreshed. This method will throw an error if the class was not initialized with SPI Flash File System.
 
@@ -89,11 +79,25 @@ Stores Offline Assist messages to SPI organized by file name. When messages are 
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
-| *mgaAnoMsgsByFileName* | table | Yes | The offline assist messages organized by file name. |
+| *msgsByFileName* | table | Yes | table of messages from Offline Assist Web service. Table slots should be file name (i.e. a date string) and values should be string or blob of all the MGA-ANO messages that correspond to that file name. |
 
 #### Return Value ####
 
 None.
+
+### getPersistedFile(*fileName*) ###
+
+Retrieves file from SPI Flash File System (sffs). This method will throw an error if the class was not initialized with SPI Flash File System.
+
+#### Parameters ####
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| *fileName* | string | Yes | Name of the file to be returned. |
+
+#### Return Value ####
+
+Blob, the binary file from SPI or `null` if no file with that name is stored.
 
 ### assistOfflineRefreshed() ###
 
@@ -106,3 +110,15 @@ None.
 #### Return Value ####
 
 Bool, if Offline Assist messages have been stored since boot.
+
+### getDateString() ###
+
+Uses the imp API date method to create a date string formatted YYYYMMDD. This is the same date formatter used by default in the UBloxAssistNow agent library.
+
+#### Parameters ####
+
+None.
+
+#### Return Value ####
+
+String, date fromatted YYYYMMDD.

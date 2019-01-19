@@ -2,7 +2,7 @@
 
 Agent library that retrieves data from u-blox AssistNow servers. Data supplied by the AssistNow Services is used by a u-blox GNSS receiver in order to substantially reduce Time To First Fix, even under poor signal conditions. For information about AssistNow services see this [user guide](https://www.u-blox.com/sites/default/files/products/documents/MultiGNSS-Assistance_UserGuide_%28UBX-13004360%29.pdf)
 
-**To add this library to your project, add** `#require "UBloxAssistNow.agent.lib.nut:1.0.0"` **to the top of your device code.**
+**To add this library to your project, add** `#require "UBloxAssistNow.agent.lib.nut:0.1.0"` **to the top of your device code.**
 
 ## Class Usage ##
 
@@ -84,7 +84,7 @@ MGA AssistNow Offline parameters:
 
 None.
 
-### getOfflineMsgByDate(*offlineRes[, dayNameFormatter][,logUnknownMsgType]*) ###
+### getOfflineMsgByDate(*offlineRes[, dateFormatter][,logUnknownMsgType]*) ###
 
 Takes the response from the *offline()* and returns a table of assist messages organized by date.
 
@@ -93,16 +93,16 @@ Takes the response from the *offline()* and returns a table of assist messages o
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | *offlineRes* | HTTP response | Yes | The response parameter returned from *offline()* |
-| *dayNameFormatter* | function | No | Function that takes the year, month and day bytes from a UBX-MGA-ANO message payload and formats into a file name string. |
+| *dateFormatter* | function | No | Function that takes the year, month and day bytes from a UBX-MGA-ANO message payload and formats them into a date string file name. |
 | *logUnknownMsgType* | bool | No | If `true` logs the message class-id if it is not an MGA-ANO message. Defaults to `false`. |
 
 #### Return Value ####
 
-Table. Keys are date strings created via the *dayNameFormatter*, values are a concatenated string of all messages for that date.
+Table. Keys are date strings created via the *dateFormatter*, values are a concatenated string of all messages for that date.
 
-### formatDayName(*year, month, day*) ###
+### formatDateString(*year, month, day*) ###
 
-Takes the year, month and day from assist payload and formats into a date string.
+Takes the year, month and day bytes from the assist payload and returns a date string formatted YYYYMMDD. This is the formatter used by *getOfflineMsgByDate* method if one is not specified.
 
 #### Parameters ####
 
@@ -118,7 +118,7 @@ String - date formatted YYYYMMDD.
 
 ### setHeaders(*headers*) ###
 
-By default there are no HTTP requests headers set, the imp API's defaults will be used. Use this method to customize HTTP request headers.
+By default there are no HTTP requests headers set, the imp API's defaults will be used. Use this method to customize HTTP request headers if needed.
 
 #### Parameters ####
 

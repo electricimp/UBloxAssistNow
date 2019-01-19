@@ -24,17 +24,17 @@
 
 // TODO: the URLs may need to be configurable
 // TODO: would probably worth moving them to under a enum namespace, `__UBLOX` for example
-const UBLOX_ASSISTNOW_ONLINE_URL            = "https://online-%s.services.u-blox.com/GetOnlineData.ashx";
-const UBLOX_ASSISTNOW_OFFLINE_URL           = "https://offline-%s.services.u-blox.com/GetOfflineData.ashx";
-const UBLOX_ASSISTNOW_PRIMARY_SERVER        = "live1";
-const UBLOX_ASSISTNOW_BACKUP_SERVER         = "live2";
-const UBLOX_ASSISTNOW_UBX_MGA_ANO_CLASS_ID  = 0x1320;
+const UBLOX_ASSIST_NOW_ONLINE_URL            = "https://online-%s.services.u-blox.com/GetOnlineData.ashx";
+const UBLOX_ASSIST_NOW_OFFLINE_URL           = "https://offline-%s.services.u-blox.com/GetOfflineData.ashx";
+const UBLOX_ASSIST_NOW_PRIMARY_SERVER        = "live1";
+const UBLOX_ASSIST_NOW_BACKUP_SERVER         = "live2";
+const UBLOX_ASSIST_NOW_UBX_MGA_ANO_CLASS_ID  = 0x1320;
 
 // https://www.u-blox.com/sites/default/files/products/documents/MultiGNSS-Assistance_UserGuide_%28UBX-13004360%29.pdf
 // MGA access tokens - http://www.u-blox.com/services-form.html
 class UBloxAssistNow {
 
-    static VERSION = "1.0.0";
+    static VERSION = "0.1.0";
 
     _token   = null;
     _headers = null;
@@ -75,8 +75,8 @@ class UBloxAssistNow {
      */
     function online(reqParams, cb) {
         local url = format("%s?token=%s;%s",
-                      UBLOX_ASSISTNOW_ONLINE_URL, _token, _formatOptions(reqParams));
-        _sendRequest(url, UBLOX_ASSISTNOW_PRIMARY_SERVER, cb);
+                      UBLOX_ASSIST_NOW_ONLINE_URL, _token, _formatOptions(reqParams));
+        _sendRequest(url, UBLOX_ASSIST_NOW_PRIMARY_SERVER, cb);
     }
 
     /**
@@ -95,8 +95,8 @@ class UBloxAssistNow {
      */
     function offline(reqParams, cb) {
         local url = format("%s?token=%s;%s",
-                      UBLOX_ASSISTNOW_OFFLINE_URL, _token, _formatOptions(reqParams));
-        _sendRequest(url, UBLOX_ASSISTNOW_PRIMARY_SERVER, cb);
+                      UBLOX_ASSIST_NOW_OFFLINE_URL, _token, _formatOptions(reqParams));
+        _sendRequest(url, UBLOX_ASSIST_NOW_PRIMARY_SERVER, cb);
     }
 
     /**
@@ -132,10 +132,10 @@ class UBloxAssistNow {
             local body = v.readstring(2 + bodylen);
 
             // Check it's UBX-MGA-ANO
-            if (classid == UBLOX_ASSISTNOW_UBX_MGA_ANO_CLASS_ID) {
+            if (classid == UBLOX_ASSIST_NOW_UBX_MGA_ANO_CLASS_ID) {
                 // Make date string
                 // This will be for file name is SFFS is used on device
-                if (dateFormatter == null) dateFormatter = formatDateKey;
+                if (dateFormatter == null) dateFormatter = formatDateString;
                 local d = dateFormatter(body[4], body[5], body[6]);
 
                 // New date? If so create day bucket
@@ -157,13 +157,12 @@ class UBloxAssistNow {
      *
      * @return {string} - date fromatted YYYYMMDD
      */
-    function formatDayName(year, month, day) {
+    function formatDateString(year, month, day) {
         return format("%04d%02d%02d", 2000 + year, month, day);
     }
 
     // Helper that sends HTTP get requests.
     function _sendRequest(url, svr, cb) {
-        // TODO: do we really want to use GET for all the requests
         local req = http.get(format(url, svr), _headers);
         req.sendasync(_respFactory(svr));
     }
@@ -175,14 +174,16 @@ class UBloxAssistNow {
             local status = resp.statuscode;
             local err = null;
 
-            // TODO: too many requests is 429
             if (status == 403) {
+                // Docs state that status code of 403 will be returned when
+                // too many requests are made from the same server, so handling
+                // 403 instead of 429.
                 err = "ERROR: Overload limit reached.";
             } else if (status < 200 || status >= 300) {
-                if (svr == UBLOX_ASSISTNOW_PRIMARY_SERVER) {
+                if (svr == UBLOX_ASSIST_NOW_PRIMARY_SERVER) {
                     // Retry request using backup server instead
                     // TODO: May want to lengthen request timeout
-                    _sendRequest(url, UBLOX_ASSISTNOW_BACKUP_SERVER, cb);
+                    _sendRequest(url, UBLOX_ASSIST_NOW_BACKUP_SERVER, cb);
                     return;
                 }
                 // Body should contain an error message string
