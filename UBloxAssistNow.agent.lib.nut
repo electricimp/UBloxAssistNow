@@ -31,8 +31,13 @@ enum UBLOX_ASSIST_NOW_CONST {
     UBX_MGA_ANO_CLASS_ID  = 0x1320
 }
 
-// https://www.u-blox.com/sites/default/files/products/documents/MultiGNSS-Assistance_UserGuide_%28UBX-13004360%29.pdf
-// MGA access tokens - http://www.u-blox.com/services-form.html
+/**
+ * Agent library used to retrieve data from u-blox AssistNow servers. Data supplied
+ * by the AssistNow Services is used by a u-blox GNSS receiver in order to substantially
+ * reduce Time To First Fix, even under poor signal conditions. For information about
+ * AssistNow services see this [user guide](https://www.u-blox.com/sites/default/files/products/documents/MultiGNSS-Assistance_UserGuide_%28UBX-13004360%29.pdf)
+ * MGA access tokens - http://www.u-blox.com/services-form.html
+ */
 class UBloxAssistNow {
 
     // NOTE: Due to u-blox Assist Now usage limits this library may not work at scale. Many

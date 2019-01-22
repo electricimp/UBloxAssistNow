@@ -37,13 +37,11 @@ enum UBLOX_ASSIST_NOW_CONST {
     CFG_NAVX5_MSG_MASK_1_SET_ASSIST_ACK  = 0x0400,
     CFG_NAVX5_MSG_ENABLE_ASSIST_ACK      = 0x01,
 
-    ERROR_INITIALIZATION_FAILED          = "Error: Initialization failed. %s";
+    ERROR_INITIALIZATION_FAILED          = "Error: Initialization failed. %s",
     ERROR_PROTOCOL_VERSION_NOT_SUPPORTED = "Error: Protocol version not supported",
     ERROR_OFFLINE_ASSIST                 = "Error: Offline assist requires spi flash file system",
     ERROR_UBLOX_M8N_REQUIRED             = "Error: UBloxM8N and UbxMsgParser required",
 }
-
-// This class wraps some of the commands as defined by [Reciever Description Including Protocol Specification document](https://www.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_%28UBX-13003221%29_Public.pdf)
 
 /**
  * The device-side library for managing Ublox Assist Now messages that help Ublox M8N get a fix

@@ -20,3 +20,6 @@ These libraries work independently and together. Users are responsible for writi
 
 **To add this library to your project, add** `#require "UBloxAssistNow.device.lib.nut:1.0.0"` **to the top of your device code.**
 
+## License ##
+
+These libraries are licensed under the [MIT License](./LICENSE).

@@ -40,15 +40,12 @@ MGA AssistNow Online parameters:
 | Key Name | Possible Values | Default | Type | Description |
 | --- | --- | --- | --- | --- |
 | *datatype* | eph, alm, aux, pos | N/A | array of strings | The data types required. Time data is always returned for each request (even if this parameter is not supplied) |
-| *format* | mga, aid | mga | string | Specifies the format of the data returned (mga = UBXMGA-*
-(M8 onwards); aid = UBX-AID-* (u7 or earlier)) |
+| *format* | mga, aid | mga | string | Specifies the format of the data returned (mga = UBXMGA-*(M8 onwards); aid = UBX-AID-* (u7 or earlier)) |
 | *gnss* | gps, qzss, glo, bds, gal | gps| array of strings | GNSS for which data should be returned |
 | *lat* | -90 to 90 | N/A | float | Approximate user latitude in WGS 84 in units of degrees
 and fractional degrees |
-| *lon* | -180 to 180 | N/A | float | Approximate user longitude in WGS 84 in units of
-degrees and fractional degrees |
-| *alt* | -1000 to 50000 | 0 | float | Approximate user altitude above WGS 84 ellipsoid in
-units of meters. |
+| *lon* | -180 to 180 | N/A | float | Approximate user longitude in WGS 84 in units of degrees and fractional degrees |
+| *alt* | -1000 to 50000 | 0 | float | Approximate user altitude above WGS 84 ellipsoid in units of meters. |
 | *pacc* | 0 to 6000000 | N/A | float | Approximate accuracy of the submitted position in meters |
 | *tacc* | 0 to 3600 | N/A | float | The timing accuracy in seconds |
 | *latency* | 0 to 3600 | N/A | float | Typical latency in seconds between the time the server receives the request, and the time when the assistance data arrives at the GNSS receiver. |
@@ -77,8 +74,7 @@ MGA AssistNow Offline parameters:
 | *gnss* | gps, glo | N/A | array of strings | The GNSS for which data should be returned. |
 | *format* | mga, aid | mga | string | Specifies the format of the data returned (mga = UBX-MGA-* (M8 onwards); aid = UBX-AID-* (u7 or earlier)) |
 | *period* | 1, 2, 3, 4, or 5 | 4 | integer | The number of weeks into the future that the data will be valid. Data can be requested for up to 5 weeks into the future. |
-| *resolution* | 1, 2, 3 | 1 | integer | The resolution of the data: 1=every day,
-2=every other day, 3=every third day |
+| *resolution* | 1, 2, 3 | 1 | integer | The resolution of the data: 1=every day, 2=every other day, 3=every third day |
 | *days* | 1, 2, 3, 5, 7, 10, or 14 | 14 | integer | The GNSS for which data should be returned. (Supported on U7 and below) |
 | *almanac* | gps, glo, bds, gal, qzss | N/A | array of strings | Added before MGA data is uploaded. (Supported on MGA only) |
 
