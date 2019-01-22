@@ -10,7 +10,7 @@ These libraries work independently and together. Users are responsible for writi
 
 [Code](./UBloxAssistNow.agent.lib.nut)
 
-**To add this library to your project, add** `#require "UBloxAssistNow.agent.lib.nut:1.0.0"` **to the top of your device code.**
+**To add this library to your project, add** `#require "UBloxAssistNow.agent.lib.nut:0.1.0"` **to the top of your device code.**
 
 ## Device Library ##
 

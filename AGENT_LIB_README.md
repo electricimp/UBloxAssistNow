@@ -1,6 +1,8 @@
 # UBloxAssistNow #
 
-Agent library that retrieves data from u-blox AssistNow servers. Data supplied by the AssistNow Services is used by a u-blox GNSS receiver in order to substantially reduce Time To First Fix, even under poor signal conditions. For information about AssistNow services see this [user guide](https://www.u-blox.com/sites/default/files/products/documents/MultiGNSS-Assistance_UserGuide_%28UBX-13004360%29.pdf)
+Agent library used to retrieve data from u-blox AssistNow servers. Data supplied by the AssistNow Services is used by a u-blox GNSS receiver in order to substantially reduce Time To First Fix, even under poor signal conditions. For information about AssistNow services see this [user guide](https://www.u-blox.com/sites/default/files/products/documents/MultiGNSS-Assistance_UserGuide_%28UBX-13004360%29.pdf)
+
+**NOTE:** Due to u-blox Assist Now usage limits this library may not work at scale. Many imp http requests will come from a single server, and so the u-blox Assist Now services may limit these requests.
 
 **To add this library to your project, add** `#require "UBloxAssistNow.agent.lib.nut:0.1.0"` **to the top of your device code.**
 

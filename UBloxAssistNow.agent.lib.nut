@@ -22,18 +22,22 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
 
-// TODO: the URLs may need to be configurable
-// TODO: would probably worth moving them to under a enum namespace, `__UBLOX` for example
-const UBLOX_ASSIST_NOW_ONLINE_URL            = "https://online-%s.services.u-blox.com/GetOnlineData.ashx";
-const UBLOX_ASSIST_NOW_OFFLINE_URL           = "https://offline-%s.services.u-blox.com/GetOfflineData.ashx";
-const UBLOX_ASSIST_NOW_PRIMARY_SERVER        = "live1";
-const UBLOX_ASSIST_NOW_BACKUP_SERVER         = "live2";
-const UBLOX_ASSIST_NOW_UBX_MGA_ANO_CLASS_ID  = 0x1320;
+
+enum UBLOX_ASSIST_NOW_CONST {
+    ONLINE_URL            = "https://online-%s.services.u-blox.com/GetOnlineData.ashx",
+    OFFLINE_URL           = "https://offline-%s.services.u-blox.com/GetOfflineData.ashx",
+    PRIMARY_SERVER        = "live1",
+    BACKUP_SERVER         = "live2",
+    UBX_MGA_ANO_CLASS_ID  = 0x1320
+}
 
 // https://www.u-blox.com/sites/default/files/products/documents/MultiGNSS-Assistance_UserGuide_%28UBX-13004360%29.pdf
 // MGA access tokens - http://www.u-blox.com/services-form.html
 class UBloxAssistNow {
 
+    // NOTE: Due to u-blox Assist Now usage limits this library may not work at scale. Many
+    // imp http requests will come from a single server, and so the u-blox Assist Now services
+    // may limit these requests.
     static VERSION = "0.1.0";
 
     _token   = null;
@@ -75,8 +79,8 @@ class UBloxAssistNow {
      */
     function online(reqParams, cb) {
         local url = format("%s?token=%s;%s",
-                      UBLOX_ASSIST_NOW_ONLINE_URL, _token, _formatOptions(reqParams));
-        _sendRequest(url, UBLOX_ASSIST_NOW_PRIMARY_SERVER, cb);
+                      UBLOX_ASSIST_NOW_CONST.ONLINE_URL, _token, _formatOptions(reqParams));
+        _sendRequest(url, UBLOX_ASSIST_NOW_CONST.PRIMARY_SERVER, cb);
     }
 
     /**
@@ -95,8 +99,8 @@ class UBloxAssistNow {
      */
     function offline(reqParams, cb) {
         local url = format("%s?token=%s;%s",
-                      UBLOX_ASSIST_NOW_OFFLINE_URL, _token, _formatOptions(reqParams));
-        _sendRequest(url, UBLOX_ASSIST_NOW_PRIMARY_SERVER, cb);
+                      UBLOX_ASSIST_NOW_CONST.OFFLINE_URL, _token, _formatOptions(reqParams));
+        _sendRequest(url, UBLOX_ASSIST_NOW_CONST.PRIMARY_SERVER, cb);
     }
 
     /**
@@ -132,7 +136,7 @@ class UBloxAssistNow {
             local body = v.readstring(2 + bodylen);
 
             // Check it's UBX-MGA-ANO
-            if (classid == UBLOX_ASSIST_NOW_UBX_MGA_ANO_CLASS_ID) {
+            if (classid == UBLOX_ASSIST_NOW_CONST_UBX_MGA_ANO_CLASS_ID) {
                 // Make date string
                 // This will be for file name is SFFS is used on device
                 if (dateFormatter == null) dateFormatter = formatDateString;
@@ -180,10 +184,10 @@ class UBloxAssistNow {
                 // 403 instead of 429.
                 err = "ERROR: Overload limit reached.";
             } else if (status < 200 || status >= 300) {
-                if (svr == UBLOX_ASSIST_NOW_PRIMARY_SERVER) {
+                if (svr == UBLOX_ASSIST_NOW_CONST.PRIMARY_SERVER) {
                     // Retry request using backup server instead
                     // TODO: May want to lengthen request timeout
-                    _sendRequest(url, UBLOX_ASSIST_NOW_BACKUP_SERVER, cb);
+                    _sendRequest(url, UBLOX_ASSIST_NOW_CONST.BACKUP_SERVER, cb);
                     return;
                 }
                 // Body should contain an error message string
