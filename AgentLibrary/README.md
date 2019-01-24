@@ -24,7 +24,7 @@ To use this service you must register and receive an [authorization token](http:
 
 ## Class Methods ##
 
-### online(*reqParams, reqCallback*) ###
+### requestOnline(*reqParams, reqCallback*) ###
 
 If the device is online use this method to get data from the AssistNow Online Service to improve your device's time to first fix. The data provided includes time aiding data, earth orientation parameters and satellite almanacs, ephemerides, and health information. Server side data is updated every 30-60 min.
 
@@ -55,7 +55,7 @@ MGA AssistNow Online parameters:
 
 None.
 
-### offline(*reqParams, reqCallback*) ###
+### requestOffline(*reqParams, reqCallback*) ###
 
 If the device is likely to have connection issues, when the device is online use this method to download data from the AssistNow Offline Service, specifying the time period (1 to 5 weeks) and the type(s) of GNSS to use so your device can estimate the positions of the satellites when no better data is available. This data will need to be stored in the device's SPI flash and transferred to the u-blox receiver for use. Using these estimates does not provide as accurate a position fix as if current ephemeris data is used, but it allows much faster time to first fix (TTFF) in nearly all cases. The data obtained from the AssistNow Offline Service is organized by date, normally a day at a time. Consequently the more weeks for which coverage is requested, the larger the amount of data to handle. Similarly, each different GNSS requires its own data. In extreme cases, the service may provide several hundred kilobytes of data. This amount can be reduced by requesting a lower resolution, but this has a small negative impact on both position accuracy and TTFF. Server side data is updated every 1-2 times a day.
 

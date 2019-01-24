@@ -4,21 +4,29 @@ Electric Imp offers two u-blox GNSS Assistance Service libraries, an agent side 
 
 These libraries work independently and together. Users are responsible for writing code that passes data from the Assist Now web services from the agent to the device.
 
-## Agent Library ##
+## [Agent Library](./AgentLibrary) ##
 
-[Documentation](./AGENT_LIB_README.md)
+[Documentation](./AgentLibrary/README.md)
 
-[Code](./UBloxAssistNow.agent.lib.nut)
+[Code](./AgentLibrary/UBloxAssistNow.agent.lib.nut)
 
 **To add this library to your project, add** `#require "UBloxAssistNow.agent.lib.nut:0.1.0"` **to the top of your device code.**
 
-## Device Library ##
+## [Device Library](./DeviceLibrary) ##
 
-[Documentation](./DEVICE_LIB_README.md)
+[Documentation](./DeviceLibrary/README.md)
 
-[Code](./UBloxAssistNow.device.lib.nut)
+[Code](./AgentLibrary/UBloxAssistNow.device.lib.nut)
 
 **To add this library to your project, add** `#require "UBloxAssistNow.device.lib.nut:1.0.0"` **to the top of your device code.**
+
+## [Examples](./Examples) ##
+
+Online Assist
+
+Offline Assist
+
+Both
 
 ## License ##
 

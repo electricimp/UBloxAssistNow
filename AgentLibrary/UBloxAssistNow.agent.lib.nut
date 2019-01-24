@@ -24,11 +24,13 @@
 
 
 enum UBLOX_ASSIST_NOW_CONST {
-    ONLINE_URL            = "https://online-%s.services.u-blox.com/GetOnlineData.ashx",
-    OFFLINE_URL           = "https://offline-%s.services.u-blox.com/GetOfflineData.ashx",
-    PRIMARY_SERVER        = "live1",
-    BACKUP_SERVER         = "live2",
-    UBX_MGA_ANO_CLASS_ID  = 0x1320
+    ONLINE_URL             = "https://online-%s.services.u-blox.com/GetOnlineData.ashx",
+    OFFLINE_URL            = "https://offline-%s.services.u-blox.com/GetOfflineData.ashx",
+    PRIMARY_SERVER         = "live1",
+    BACKUP_SERVER          = "live2",
+    UBX_MGA_ANO_CLASS_ID   = 0x1320,
+    ERROR_INVALID_REQ_OPTS = "Error: Invalid request options. AssistNow request not sent.",
+    ERROR_REQ_OVERLOAD     = "Error: Overload limit reached."
 }
 
 /**
@@ -82,10 +84,15 @@ class UBloxAssistNow {
      * @param {table} error - A string describing the error.
      * @param {http::response} response - HTTP response object return from u-blox AssistNow servers.
      */
-    function online(reqParams, cb) {
-        local url = format("%s?token=%s;%s",
-                      UBLOX_ASSIST_NOW_CONST.ONLINE_URL, _token, _formatOptions(reqParams));
-        _sendRequest(url, UBLOX_ASSIST_NOW_CONST.PRIMARY_SERVER, cb);
+    function requestOnline(reqParams, cb) {
+        local options = _formatOptions(reqParams);
+
+        if (options == null) {
+            cb(UBLOX_ASSIST_NOW_CONST.ERROR_INVALID_REQ_OPTS, null);
+        } else {
+            local url = format("%s?token=%s;%s", UBLOX_ASSIST_NOW_CONST.ONLINE_URL, _token, options);
+            _sendRequest(url, UBLOX_ASSIST_NOW_CONST.PRIMARY_SERVER, cb);
+        }
     }
 
     /**
@@ -102,10 +109,15 @@ class UBloxAssistNow {
      * @param {httpresponse} response - HTTP response object return from u-blox AssistNow servers.
      * @callback requestCallback
      */
-    function offline(reqParams, cb) {
-        local url = format("%s?token=%s;%s",
-                      UBLOX_ASSIST_NOW_CONST.OFFLINE_URL, _token, _formatOptions(reqParams));
-        _sendRequest(url, UBLOX_ASSIST_NOW_CONST.PRIMARY_SERVER, cb);
+    function requestOffline(reqParams, cb) {
+        local options = _formatOptions(reqParams);
+
+        if (options == null) {
+            cb(UBLOX_ASSIST_NOW_CONST.ERROR_INVALID_REQ_OPTS, null);
+        } else {
+            local url = format("%s?token=%s;%s", UBLOX_ASSIST_NOW_CONST.OFFLINE_URL, _token, options);
+            _sendRequest(url, UBLOX_ASSIST_NOW_CONST.PRIMARY_SERVER, cb);
+        }
     }
 
     /**
@@ -141,7 +153,7 @@ class UBloxAssistNow {
             local body = v.readstring(2 + bodylen);
 
             // Check it's UBX-MGA-ANO
-            if (classid == UBLOX_ASSIST_NOW_CONST_UBX_MGA_ANO_CLASS_ID) {
+            if (classid == UBLOX_ASSIST_NOW_CONST.UBX_MGA_ANO_CLASS_ID) {
                 // Make date string
                 // This will be for file name is SFFS is used on device
                 if (dateFormatter == null) dateFormatter = formatDateString;
@@ -173,7 +185,7 @@ class UBloxAssistNow {
     // Helper that sends HTTP get requests.
     function _sendRequest(url, svr, cb) {
         local req = http.get(format(url, svr), _headers);
-        req.sendasync(_respFactory(svr));
+        req.sendasync(_respFactory(url, svr, cb));
     }
 
     // Helper that returns response handler for HTTP requests.
@@ -187,7 +199,7 @@ class UBloxAssistNow {
                 // Docs state that status code of 403 will be returned when
                 // too many requests are made from the same server, so handling
                 // 403 instead of 429.
-                err = "ERROR: Overload limit reached.";
+                err = UBLOX_ASSIST_NOW_CONST.ERROR_REQ_OVERLOAD;
             } else if (status < 200 || status >= 300) {
                 if (svr == UBLOX_ASSIST_NOW_CONST.PRIMARY_SERVER) {
                     // Retry request using backup server instead
@@ -196,7 +208,7 @@ class UBloxAssistNow {
                     return;
                 }
                 // Body should contain an error message string
-                err = resp.body;
+                err = "Error: status code = " + status + ", msg = " + resp.body;
             }
 
             cb(err, resp);
@@ -212,13 +224,14 @@ class UBloxAssistNow {
                 case "string":
                 case "integer":
                 case "float":
-                    ev += (v + ";");
+                    encoded += (v + ";");
                     break;
                 case "array":
                     local last = v.len() - 1;
                     foreach(idx, item in v) {
                         encoded += (idx == last) ? (item + ";") : (item + ",");
                     }
+                    break;
                 default:
                     // Data could not be formatted
                     return null;

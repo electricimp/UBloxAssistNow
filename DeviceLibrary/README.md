@@ -99,6 +99,20 @@ Retrieves file from SPI Flash File System (sffs). This method will throw an erro
 
 Blob, the binary file from SPI or `null` if no file with that name is stored.
 
+### sendUtcTimeAssist(*currentYear*) ###
+
+Checks if the imp has a valid UTC time using the *currentYear* parameter and the imp API date method. If time is valid, an MGA-INI-TIME-ASSIST-UTC message is written to u-blox module.
+
+#### Parameters ####
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| *currentYear* | integer | Yes | Current year, ie `2019`. |
+
+#### Return Value ####
+
+Boolean, `true` if imp has a valid date and message was sent, `false` if date was not valid.
+
 ### assistOfflineRefreshed() ###
 
 Returns boolean, if Offline Assist messages have been stored since boot.

@@ -23,9 +23,15 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 
 enum UBLOX_ASSIST_NOW_CONST {
+    MGA_INI_TIME_CLASS_ID                = 0x1340,
     MGA_ACK_CLASS_ID                     = 0x1360,
     MON_VER_CLASS_ID                     = 0x0a04,
     CFG_NAVX5_CLASS_ID                   = 0x0623,
+
+    MGA_INI_TIME_UTC_LEN                 = 24,
+    MGA_INI_TIME_UTC_TYPE                = 0x10,
+    MGA_INI_TIME_UTC_LEAP_SEC_UNKNOWN    = 0x80,
+    MGA_INI_TIME_UTC_ACCURACY            = 0x0003,
 
     CFG_NAVX5_MSG_VER_0                  = 0x0000,
     CFG_NAVX5_MSG_VER_2                  = 0x0002,
@@ -99,7 +105,6 @@ class UBloxAssistNow {
         // Configures handlers for MGA-ACK and MON-VER messages, checks protocol version, confirms gps is ready/receiving commands
         _init();
     }
-
 
     /**
      * @typedef {table} Parsed_MON_VER_Payload
@@ -238,9 +243,9 @@ class UBloxAssistNow {
      *
      * @return {string} - date fromatted YYYYMMDD
      */
-    function getDateString() {
+    function getDateString(d = null) {
         // Make filename; offline assist data is valid for the UTC day (ie midpoint is midday UTC)
-        local d = date();
+        local d = (d == null) ? date() : d;
         return format("%04d%02d%02d", d.year, d.month + 1, d.day);
     }
 
@@ -253,16 +258,53 @@ class UBloxAssistNow {
         return _assistOfflineRefreshed;
     }
 
+    /**
+     * Checks if the imp has a valid UTC time using the current year parameter. If time
+     * is valid, an MGA_INI_TIME_ASSIST_UTC message is written to u-blox module.
+     *
+     * @param {integer} currYear - Current year (ie 2019).
+     *
+     * @return {bool} - if date was valid and assist message was written to u-blox
+     */
+    function sendUtcTimeAssist(currYear) {
+        local d = date();
+
+        if (d.year >= currYear) {
+            // Form UBX-MGA-INI-TIME_UTC message
+            local timeAssist = blob(UBLOX_ASSIST_NOW_CONST.MGA_INI_TIME_UTC_LEN);
+
+            timeAssist.writen(UBLOX_ASSIST_NOW_CONST.MGA_INI_TIME_UTC_TYPE, 'b');
+            // Msg Type & Time reference on reception ok with zero blob default
+            timeAssist.seek(3, 'b');
+            timeAssist.writen(UBLOX_ASSIST_NOW_CONST.MGA_INI_TIME_UTC_LEAP_SEC_UNKNOWN, 'b');
+            timeAssist.writen(d.year & 0xFF, 'b');
+            timeAssist.writen(d.year >> 8, 'b');
+            timeAssist.writen(d.month + 1, 'b');
+            timeAssist.writen(d.day, 'b');
+            timeAssist.writen(d.hour, 'b');
+            timeAssist.writen(d.min, 'b');
+            timeAssist.writen(d.sec, 'b');
+            timeAssist.seek(16, 'b');
+            timeAssist.writen(UBLOX_ASSIST_NOW_CONST.MGA_INI_TIME_UTC_ACCURACY, 'w');
+            // 11-15 and 18-23 are ok with the zero blob default
+
+            _ubx.writeUBX(UBLOX_ASSIST_NOW_CONST.MGA_INI_TIME_CLASS_ID, timeAssist);
+            return true;
+        }
+
+        return false;
+    }
+
     // register handlers for 0x0a04, and 0x1360, notify user that they should not
     // define a handlers for 1360 or 0x0a04 if using this library - repsonse from
     // 0x0a04 can be retrived using getMonVer function.
     function _init() {
         // Register handlers
-        _ubx.registerMsgHandler(UBLOX_ASSIST_NOW_CONST.MON_VER_CLASS_ID, _monVerMsgHandler.bindenv(this));
-        _ubx.registerMsgHandler(UBLOX_ASSIST_NOW_CONST.MGA_ACK_CLASS_ID, _mgaAckMsgHandler.bindenv(this));
+        _ubx.registerOnMessageCallback(UBLOX_ASSIST_NOW_CONST.MON_VER_CLASS_ID, _monVerMsgHandler.bindenv(this));
+        _ubx.registerOnMessageCallback(UBLOX_ASSIST_NOW_CONST.MGA_ACK_CLASS_ID, _mgaAckMsgHandler.bindenv(this));
 
         // Test GPS up and get protocol version
-        ubx.writeUBX(UBLOX_ASSIST_NOW_CONST.MON_VER_CLASS_ID, "");
+        _ubx.writeUBX(UBLOX_ASSIST_NOW_CONST.MON_VER_CLASS_ID, "");
     }
 
     function _mgaAckMsgHandler(payload) {
@@ -335,7 +377,7 @@ class UBloxAssistNow {
                 payload.writen(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_ENABLE_ASSIST_ACK, 'b');
 
                 // Write UBX payload
-                ubx.writeUBX(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_CLASS_ID, payload);
+                _ubx.writeUBX(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_CLASS_ID, payload);
             } else {
                 // We cannot create a payload without knowing the protversion
                 throw UBLOX_ASSIST_NOW_CONST.ERROR_PROTOCOL_VERSION_NOT_SUPPORTED;
@@ -346,7 +388,7 @@ class UBloxAssistNow {
     // Writes a single assist message from the _assist queue to the u-blox module.
     function _writeAssist() {
         if (!_gpsReady) {
-            imp.wakeup(0.5, _writeAssist);
+            imp.wakeup(0.5, _writeAssist.bindenv(this));
             return;
         }
 
@@ -374,7 +416,7 @@ class UBloxAssistNow {
             case "15.01":
             case "16.00":
             case "17.00":
-                return CFG_NAVX5_MSG_VER_0;
+                return UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_0;
             case "18.00":
             case "19.00":
             case "20.00":
@@ -385,10 +427,10 @@ class UBloxAssistNow {
             case "22.00":
             case "23.00":
             case "23.01":
-                return CFG_NAVX5_MSG_VER_2;
+                return UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_2;
             case "19.10":
             case "19.20":
-                return CFG_NAVX5_MSG_VER_3;
+                return UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3;
         }
         return null;
     }
