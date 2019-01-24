@@ -27,7 +27,7 @@
 
 #require "UBloxM8N.device.lib.nut:1.0.0"
 #require "UbxMsgParser.lib.nut:1.0.0"
-#require "UBloxAssistNow.device.lib.nut:1.0.0"
+#require "UBloxAssistNow.device.lib.nut:0.1.0"
 #require "SPIFlashFileSystem.device.lib.nut:2.0.0"
 #require "ConnectionManager.lib.nut:3.1.0"
 

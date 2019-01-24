@@ -59,7 +59,7 @@ enum UBLOX_ASSIST_NOW_CONST {
  */
 class UBloxAssistNow {
 
-    static VERSION = "1.0.0";
+    static VERSION = "0.1.0";
 
     // UBloxM8N driver, must be pre-configured to accept ubx messages
     _ubx = null;
