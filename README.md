@@ -22,11 +22,7 @@ These libraries work independently and together. Users are responsible for writi
 
 ## [Examples](./Examples) ##
 
-Online Assist
-
-Offline Assist
-
-Both
+[Summery](./Examples/README.md)
 
 ## License ##
 

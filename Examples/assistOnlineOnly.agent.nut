@@ -94,5 +94,7 @@ function reportFix(report) {
 server.log("Agent running...");
 
 // Open Device Listeners
-device.on("reqAssist", onlineReqHandler);
+device.on("reqAssist", function(dummy) {
+  assist.requestOnline(assistOnlineParams, onlineReqHandler);
+});
 device.on("fix", reportFix);

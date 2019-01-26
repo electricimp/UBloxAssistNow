@@ -49,11 +49,6 @@ enum FIX_TYPE {
     TIME_ONLY
 }
 
-enum ASSIST_NOW_TYPE {
-    ONLINE,
-    OFFLINE
-}
-
 // Configure Hardware & Library Variables
 cm <- ConnectionManager({ "startBehavior"  : CM_START_NO_ACTION,
                           "blinkupBehavior": CM_BLINK_ALWAYS,
@@ -297,6 +292,35 @@ function enterSleep() {
     imp.deepsleepfor(SLEEP_FOR_SEC);
 }
 
+function onConnection() {
+    // Fix yet? If not ask for online assist
+    if (gpsFix == null) {
+        log("No fix by connect time: asking agent for assistance");
+        agent.send("reqAssist", null);
+
+        // Log u-blox software version
+        imp.wakeup(1, function() {
+            log("Get u-blox Software Version...");
+            local swVersion = assist.getMonVer();
+            if (swVersion != null) {
+                logUBX(assist.getMonVer());
+            } else {
+                log("u-blox Software Version not available.");
+            }
+        })
+
+        // Power down after defined timeout
+        imp.wakeup(FIX_TIMEOUT_SEC, function() {
+            enterSleep();
+        });
+    } else {
+        // Power down
+        imp.onidle(function() {
+            enterSleep();
+        });
+    }
+}
+
 // RUNTIME
 // ----------------------------------------------------------------------------------------
 
@@ -320,9 +344,9 @@ ubx.registerOnMessageCallback(UBX_MSG_PARSER_CLASS_MSG_ID.ACK_NAK, nakHandler);
 assist <- UBloxAssistNow(ubx, sffs);
 
 log("Enable navigation messages...");
-// Satellite Information
+// Satellite Information every 5 sec
 ubx.enableUbxMsg(UBX_MSG_PARSER_CLASS_MSG_ID.NAV_SAT, 5, satMsgHandler);
-// Position Velocity Time Solution
+// Position Velocity Time Solution every 1 sec
 ubx.enableUbxMsg(UBX_MSG_PARSER_CLASS_MSG_ID.NAV_PVT, 1, navMsgHandler);
 
 // Register agent-device com handlers
@@ -336,33 +360,7 @@ if (assist.sendUtcTimeAssist(CURRENT_YEAR)) {
 }
 
 // When we're connected, check for fix. If we don't have it, ask for assistance
-cm.onConnect(function() {
-    // Fix yet? If not ask for online assist
-    if (gpsFix == null) {
-        log("No fix by connect time: asking agent for assistance");
-        agent.send("reqAssist", ASSIST_NOW_TYPE.ONLINE);
-
-        imp.wakeup(1, function() {
-            log("Get u-blox Software Version...");
-            local swVersion = assist.getMonVer();
-            if (swVersion != null) {
-                logUBX(assist.getMonVer());
-            } else {
-                log("u-blox Software Version not available.");
-            }
-        })
-
-        // Power down after defined timeout
-        imp.wakeup(FIX_TIMEOUT_SEC, function() {
-            enterSleep();
-        });
-    } else {
-        // Power down
-        imp.onidle(function() {
-            enterSleep();
-        });
-    }
-});
+cm.onConnect(onConnection);
 
 cm.onTimeout(function() {
     cm.log("Failed to connect, sleeping");
