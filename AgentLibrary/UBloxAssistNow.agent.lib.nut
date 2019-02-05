@@ -24,13 +24,17 @@
 
 
 enum UBLOX_ASSIST_NOW_CONST {
-    ONLINE_URL             = "https://online-%s.services.u-blox.com/GetOnlineData.ashx",
-    OFFLINE_URL            = "https://offline-%s.services.u-blox.com/GetOfflineData.ashx",
-    PRIMARY_SERVER         = "live1",
-    BACKUP_SERVER          = "live2",
-    UBX_MGA_ANO_CLASS_ID   = 0x1320,
-    ERROR_INVALID_REQ_OPTS = "Error: Invalid request options. AssistNow request not sent.",
-    ERROR_REQ_OVERLOAD     = "Error: Overload limit reached."
+    ONLINE_URL              = "https://online-%s.services.u-blox.com/GetOnlineData.ashx",
+    OFFLINE_URL             = "https://offline-%s.services.u-blox.com/GetOfflineData.ashx",
+    PRIMARY_SERVER          = "live1",
+    BACKUP_SERVER           = "live2",
+    UBX_MGA_ANO_CLASS_ID    = 0x1320,
+    UBX_HEADER_BYTE_1       = 0xB5,
+    UBX_HEADER_BYTE_2       = 0x62,
+    ERROR_INVALID_REQ_OPTS  = "Error: Request options could not be encoded. AssistNow request not sent.",
+    ERROR_REQ_OVERLOAD      = "Error: Overload limit reached.",
+    ERROR_REQ_INVALID_PARAM = "Error: Request failed. Invalid request parameter: %s.",
+    ERROR_REQ_INVALID_TOKEN = "Error: Request failed. Invalid token.",
 }
 
 /**
@@ -127,46 +131,72 @@ class UBloxAssistNow {
      * @param {httpresponse} offlineRes - HTTP response object received from AssistNow Offline Service.
      * @param {requestCallback} dateFormatter - Function that takes year, month and day bits and returns
      * a string used as the table slot for all messages containing the same date.
-     * @param {bool} logUnknownMsgType - Whether to log message class-id if data contains messages
-     * other than UBX-MGA-ANO.
+     * @param {bool} logErrors - Whether to log errors, response status code not 200, msg class-id
+     * not UBX-MGA-ANO, or dropped bytes if corrupted packet encountered.
      */
-    function getOfflineMsgByDate(offlineRes, dateFormatter = null, logUnknownMsgType = false) {
-        if (offlineRes.statuscode != 200) return {};
+    function getOfflineMsgByDate(offlineRes, dateFormatter = null, logErrors = false) {
+        if (offlineRes.statuscode != 200) {
+            if (logErrors) server.error("Offline response statuscode: " + offlineRes.statuscode);
+            return {};
+        }
 
-        // Get result as a blob as we iterate through it
-        local v = blob();
-        v.writestring(offlineRes.body);
-        v.seek(0);
+        // Write offline response data to a blob, so we can parse messages
+        local b = blob(offlineRes.body.len());
+        b.writestring(offlineRes.body);
+        b.seek(0, 'b');
 
-        // Make blank offline assist table to send to device
-        // Table consists of date entries with binary strings of concatenated messages for that day
+        // Make offline assist table of date entries with binary strings of concatenated messages for that day to send to device
         local assist = {};
+        local p = 0;
+        local l = b.len();
+        local parsingError = null;
 
         // Build day buckets with all UBX-MGA-ANO messages for a single day in each
-        while(v.tell() < v.len()) {
-            // Read header & extract length
-            local msg = v.readstring(6);
-            local bodylen = msg[4] | (msg[5] << 8);
-            local classid = msg[2] << 8 | msg[3];
+        while((p = b.tell()) < l) {
+            // Note: These checks will not eliminate a corrupted packet from being passed on/stored, but will get the next packets back on track after corrupted packet is encountered. The module can deal with corrupted data, so we are not validating packet length, check sum etc.
 
-            // Read message body & checksum bytes
-            local body = v.readstring(2 + bodylen);
+            // Confirm ubx header
+            if (b[p] == UBLOX_ASSIST_NOW_CONST.UBX_HEADER_BYTE_1 &&
+                b[p + 1] == UBLOX_ASSIST_NOW_CONST.UBX_HEADER_BYTE_2) {
 
-            // Check it's UBX-MGA-ANO
-            if (classid == UBLOX_ASSIST_NOW_CONST.UBX_MGA_ANO_CLASS_ID) {
-                // Make date string
-                // This will be for file name is SFFS is used on device
-                if (dateFormatter == null) dateFormatter = formatDateString;
-                local d = dateFormatter(body[4], body[5], body[6]);
+                if (logErrors && parsingError != null) {
+                    server.error("Error parsing offline assist data. Dropped data: ");
+                    server.error(parsingError);
+                    parsingError = null;
+                }
 
-                // New date? If so create day bucket
-                if (!(d in assist)) assist[d] <- "";
+                // Read header & extract length
+                local msg = b.readstring(6);
+                local classid = msg[2] << 8 | msg[3];
+                local bodylen = msg[4] | (msg[5] << 8);
+                // Read message body & checksum bytes
+                local body = b.readstring(2 + bodylen);
 
-                // Append to bucket
-                assist[d] += (msg + body);
-            } else if (logUnknownMsgType) {
-                server.log(format("Unknown classid %04x in offline assist data", classid));
+                // Add to assist table if it's a UBX-MGA-ANO msg
+                if (classid == UBLOX_ASSIST_NOW_CONST.UBX_MGA_ANO_CLASS_ID) {
+                    // Make date string, this will be the file name used to store msgs in SFFS on the device
+                    if (dateFormatter == null) dateFormatter = formatDateString;
+                    local d = dateFormatter(body[4], body[5], body[6]);
+
+                    // New date? If so create day bucket
+                    if (!(d in assist)) assist[d] <- "";
+
+                    // Append to bucket
+                    assist[d] += (msg + body);
+                } else {
+                    if (logErrors) server.error(format("Unknown classid %04x in offline assist data", classid));
+                }
+            } else {
+                // Move pointer ahead to next byte by adding byte to parsing error string
+                if (parsingError == null) parsingError = "";
+                parsingError += b.readstring(1);
             }
+        }
+
+        if (logErrors && parsingError != null) {
+            server.error("Error parsing offline assist data. Dropped data: ");
+            server.error(parsingError);
+            parsingError = null;
         }
 
         return assist;
@@ -195,20 +225,36 @@ class UBloxAssistNow {
             local status = resp.statuscode;
             local err = null;
 
-            if (status == 403) {
+            if (status == 200) {
+
+            } else if (status == 403) {
                 // Docs state that status code of 403 will be returned when
                 // too many requests are made from the same server, so handling
                 // 403 instead of 429.
                 err = UBLOX_ASSIST_NOW_CONST.ERROR_REQ_OVERLOAD;
-            } else if (status < 200 || status >= 300) {
-                if (svr == UBLOX_ASSIST_NOW_CONST.PRIMARY_SERVER) {
+            } else {
+                if (status == 400) {
+                    // Look for known errors that retry would not help with
+                    foreach(k, v in resp.headers) {
+                        if (k.find("400 invalid parameter") != null) {
+                            err = format(UBLOX_ASSIST_NOW_CONST.ERROR_REQ_INVALID_PARAM, v);
+                        } else if (k.find("400 invalid token") != null) {
+                            err = UBLOX_ASSIST_NOW_CONST.ERROR_REQ_INVALID_TOKEN;
+                        }
+                    }
+                }
+
+                // If we didn't fine a known error, retry with backup server
+                if (err == null && svr == UBLOX_ASSIST_NOW_CONST.PRIMARY_SERVER) {
                     // Retry request using backup server instead
                     // TODO: May want to lengthen request timeout
                     _sendRequest(url, UBLOX_ASSIST_NOW_CONST.BACKUP_SERVER, cb);
                     return;
                 }
-                // Body should contain an error message string
-                err = "Error: status code = " + status + ", msg = " + resp.body;
+
+                // If we have tried both servers, and we don't have a better error message, create
+                // an error message from the response body.
+                if (err == null) err = "Error: status code = " + status + ", msg = " + resp.body;
             }
 
             cb(err, resp);
@@ -223,8 +269,11 @@ class UBloxAssistNow {
             switch (typeof v) {
                 case "string":
                 case "integer":
-                case "float":
                     encoded += (v + ";");
+                    break;
+                case "float":
+                    // Use format, so float isn't truncated
+                    encoded += format("%f;", v);
                     break;
                 case "array":
                     local last = v.len() - 1;

@@ -44,14 +44,16 @@ MGA AssistNow Online parameters:
 | *datatype* | eph, alm, aux, pos | N/A | array of strings | The data types required. Time data is always returned for each request (even if this parameter is not supplied) |
 | *format* | mga, aid | mga | string | Specifies the format of the data returned (mga = UBXMGA-* (M8 onwards); aid = UBX-AID-* (u7 or earlier)) |
 | *gnss* | gps, qzss, glo, bds, gal | gps| array of strings | GNSS for which data should be returned |
-| *lat* | -90 to 90 | N/A | float | Approximate user latitude in WGS 84 in units of degrees and fractional degrees |
-| *lon* | -180 to 180 | N/A | float | Approximate user longitude in WGS 84 in units of degrees and fractional degrees |
-| *alt* | -1000 to 50000 | 0 | float | Approximate user altitude above WGS 84 ellipsoid in units of meters. |
-| *pacc* | 0 to 6000000 | N/A | float | Approximate accuracy of the submitted position in meters |
-| *tacc* | 0 to 3600 | N/A | float | The timing accuracy in seconds |
-| *latency* | 0 to 3600 | N/A | float | Typical latency in seconds between the time the server receives the request, and the time when the assistance data arrives at the GNSS receiver. |
+| *lat* | -90 to 90 | N/A | string/float | Approximate user latitude in WGS 84 in units of degrees and fractional degrees |
+| *lon* | -180 to 180 | N/A | string/float | Approximate user longitude in WGS 84 in units of degrees and fractional degrees |
+| *alt* | -1000 to 50000 | 0 | string/float | Approximate user altitude above WGS 84 ellipsoid in units of meters. |
+| *pacc* | 0 to 6000000 | N/A | string/float | Approximate accuracy of the submitted position in meters |
+| *tacc* | 0 to 3600 | N/A | string/float | The timing accuracy in seconds |
+| *latency* | 0 to 3600 | N/A | string/float | Typical latency in seconds between the time the server receives the request, and the time when the assistance data arrives at the GNSS receiver. |
 | *filteronpos* | N/A | N/A | N/A | If present, the ephemeris data returned will only contain data for the satellites which are likely to be visible from the approximate position provided (see lat, lon, alt and pacc parameters). If an approximate position is not provided, no filtering will be performed. |
 | *filteronsv* | N/A | N/A | array of strings | An array of u-blox gnssId:svId pairs. The ephemeris data returned will only contain data for the listed satellites. |
+
+**Note:** To maintain accuracy it is reccomened that strings be used instead of floats for *lat*, *lon*, *alt*, *pacc*, *tacc*, and *latency*. If a float is passed in values will be rounded to 5 decimal places and will be formatted using the imp API `format("%f", floatVal)`.
 
 #### Return Value ####
 
@@ -83,9 +85,9 @@ MGA AssistNow Offline parameters:
 
 None.
 
-### getOfflineMsgByDate(*offlineRes[, dateFormatter][,logUnknownMsgType]*) ###
+### getOfflineMsgByDate(*offlineRes[, dateFormatter][,logErrors]*) ###
 
-Takes the response from the *offline()* and returns a table of assist messages organized by date.
+Takes the response from the *offline()* and returns a table of UBX-MGA-ANO assist messages organized by date.
 
 #### Parameters ####
 
@@ -93,11 +95,11 @@ Takes the response from the *offline()* and returns a table of assist messages o
 | --- | --- | --- | --- |
 | *offlineRes* | HTTP response | Yes | The response parameter returned from *offline()* |
 | *dateFormatter* | function | No | Function that takes the year, month and day bytes from a UBX-MGA-ANO message payload and formats them into a date string file name. |
-| *logUnknownMsgType* | bool | No | If `true` logs the message class-id if it is not an MGA-ANO message. Defaults to `false`. |
+| *logErrors* | bool | No | If `true` logs errors encountered when parsing offline response data. Defaults to `false`. |
 
 #### Return Value ####
 
-Table. Keys are date strings created via the *dateFormatter*, values are a concatenated string of all messages for that date.
+Table. Keys are date strings created via the *dateFormatter*, values are a concatenated string of all messages for that date. If response doesn't have a 200 status code or if no UBX-MGA-ANO messages are found the table will be empty.
 
 ### formatDateString(*year, month, day*) ###
 

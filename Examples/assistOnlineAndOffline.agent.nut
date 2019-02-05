@@ -94,6 +94,24 @@ function getAssist(type) {
     }
 }
 
+function convertToDecimalDegStr(raw) {
+    local int = raw / 10000000;
+    local dec = raw % 10000000;
+    return format("%d.%07d", int, dec);
+}
+
+function getLatLonDirStr(lat, lon) {
+    local latDir = (lat >= 0) ? 'N' : 'S';
+    if (lat < 0) lat =- lat;
+    local latDD = convertToDecimalDegStr(lat);
+
+    local lonDir = (lon >= 0) ? 'E' : 'W';
+    if (lon < 0) lon =- lon;
+    local lonDD = convertToDecimalDegStr(lon);
+
+    return format("%s %c, %s %c", latDD, latDir, lonDD, lonDir);
+}
+
 function reportFix(report) {
     // Increment number of reports
     if (nv.len() == 0) {
@@ -116,7 +134,7 @@ function reportFix(report) {
         if (lon < 0) lon =- lon;
         local lo1 = lon / 10000000, lo2 = lon % 10000000;
 
-        server.log(format("count %d, awakefor %.1fs, fixtime %.1fs, lastfix %.1fs, satellites %d, time %s, h-accuracy %.1fm, lat/lon %d.%07d %c, %d.%07d %c",
+        server.log(format("count %d, awakefor %.1fs, fixtime %.1fs, lastfix %.1fs, satellites %d, time %s, h-accuracy %.1fm, lat/lon %s",
                           nv.reports,
                           report.awakeFor,
                           report.fix.fixTime,
@@ -124,8 +142,7 @@ function reportFix(report) {
                           report.fix.numSats,
                           report.fix.time,
                           report.fix.accuracy,
-                          la1,la2,lad,
-                          lo1,lo2,lod));
+                          getLatLonStr(report.fix.lat, report.fix.lon)));
     }
 }
 
