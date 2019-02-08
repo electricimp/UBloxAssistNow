@@ -45,15 +45,17 @@ enum UBLOX_ASSIST_NOW_CONST {
 
     ERROR_INITIALIZATION_FAILED          = "Error: Initialization failed. %s",
     ERROR_PROTOCOL_VERSION_NOT_SUPPORTED = "Error: Protocol version not supported",
-    ERROR_OFFLINE_ASSIST                 = "Error: Offline assist requires spi flash file system",
-    ERROR_UBLOX_M8N_REQUIRED             = "Error: UBloxM8N and UbxMsgParser required",
+    ERROR_UBLOX_M8N_REQUIRED             = "Error: UBloxM8N required",
 }
 
 /**
- * The device-side library for managing Ublox Assist Now messages that help Ublox M8N get a fix
- * faster. This class is dependent on the UBloxM8N and UbxMsgParser libraries. If Assist Offline
- * is used this library also requires Spi Flash File System library. This class wraps some of
- * the commands as defined by [Reciever Description Including Protocol Specification document](https://www.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_%28UBX-13003221%29_Public.pdf)
+ * Class that manages writing Ublox Assist Now messages to the Ublox M8N module and is dependant on
+ * the UBloxM8N (Driver) and UbxMsgParser libraries.
+ * This class does not manage the stoage of Assist Offline messages, only the writing of assist messages
+ * (both Online and Offline) to the M8N.
+ * This class registers message callbacks for MGA-ACK (0x1360) and MON-VER (0x0a04) and uses the Parser to
+ * to process these messages. If using this class the code **MUST NOT** register handlers or change the
+ * parser methods for these messages.
  *
  * @class
  */
@@ -63,8 +65,6 @@ class UBloxAssistNow {
 
     // UBloxM8N driver, must be pre-configured to accept ubx messages
     _ubx = null;
-    // SPI Flash File system - store assist files, already initialized with space alocated
-    _sffs = null;
 
     // Assistance messages queue
     _assist = null;
@@ -73,174 +73,59 @@ class UBloxAssistNow {
     // Collects all errors encountered when writing assist messages to module
     _assistErrors = null;
 
-    // Flag that tracks if we have refreshed assist offline this boot
-    _assistOfflineRefreshed = null;
+
     // Flag that indicates we have recieved our fist communication from UBloxM8N
     _gpsReady = null;
     // Stores the latest parsed payload from MON-VER message
     _monVer = null;
+    _mgaACK = null;
 
     /**
      * Initializes Assist Now library. The constructor will enable ACKs for aiding packets, and register message specific
-     * callbacks for MON-VER (0x0a04) and MGA-ACK (0x1360) messages. Users must not register callbacks for these. The latest
-     * MON-VER payload is available by calling class method getMonVer. During initialization the protocol version will be
-     * checked, and an error thrown if an unsupported version is detected.
+     * callbacks for MON-VER (0x0a04) and MGA-ACK (0x1360) messages. Users must not register callbacks for these. The
+     * latest MON-VER and MGA-ACK payloads are available by calling class method getMonVer and getMgaAck respectively.
+     * During initialization the protocol version will be checked, and an error thrown if an unsupported version is
+     * detected.
      *
      * @param {UBloxM8N} ubx - A UBloxM8N intance that has been configured to accept and output UBX messages.
-     * @param {SPIFlashFileSystem} [sffs] - An initialized SPI Flash File system object. This is required if Offline Assist is used.
      */
-    constructor(ubx, sffs = null) {
+    constructor(ubx) {
         // add check for required libraries
         local rt = getroottable();
-        if (!("UBloxM8N" in rt) || !("UbxMsgParser" in rt)) throw UBLOX_ASSIST_NOW_CONST.ERROR_UBLOX_M8N_REQUIRED;
+        if (!("UBloxM8N" in rt)) throw UBLOX_ASSIST_NOW_CONST.ERROR_UBLOX_M8N_REQUIRED;
 
-        _assistOfflineRefreshed = false;
         _gpsReady = false;
         _assist = [];
         _assistErrors = [];
 
         _ubx  = ubx;
-        _sffs = sffs; // Required for offline assist
 
         // Configures handlers for MGA-ACK and MON-VER messages, checks protocol version, confirms gps is ready/receiving commands
         _init();
     }
 
     /**
-     * @typedef {table} Parsed_MON_VER_Payload
-     * @property {integer} type - Type of acknowledgment: 0 = The message was not
-     *          used by the receiver (see infoCode field for an indication of why), 1 = The
-     *          message was accepted for use by the receiver (the infoCode field will be 0)
-     * @property  {integer} version - Message version (0x00 for this version)
-     * @property  {integer} infoCode - Provides greater information on what the
-     *          receiver chose to do with the message contents: 0 = The receiver accepted
-     *          the data, 1 = The receiver doesn't know the time so can't use the data
-     *          (To resolve this a UBX-MGA-INITIME_UTC message should be supplied first),
-     *          2 = The message version is not supported by the receiver, 3 = The message
-     *          size does not match the message version, 4 = The message data could not be
-     *          stored to the database, 5 = The receiver is not ready to use the message
-     *          data, 6 = The message type is unknown
-     * @property  {integer} msgId - UBX message ID of the ack'ed message
-     * @property  {blob} msgPayloadStart - The first 4 bytes of the ack'ed message's payload
-     * @property  {string|null} error - Error string or null
-     * @property  {blob} payload - unparsed payload
-     */
-    /**
-     * Returns the parsed payload from the last MON-VER message
+     * Returns the payload from the last MON-VER message
      *
-     * @return {Parsed_MON_VER_Payload}
+     * @return {blob} - from the last MON-VER message
      */
     function getMonVer() {
         return _monVer;
     }
 
     /**
-     * Takes a blob of binary messages, splits them into individual messages that are then stored in the currrent
-     * message queue, ready to be written to the u-blox module when sendCurrent method is called.
+     * Returns the payload from the last MGA-ACK message
      *
-     * @param {blob} assistMsgs - Takes blob of messages from AssistNow Online web request or the persisted
-     *      AssistNow Offline messages for today's date.
-     *
-     * @return {bool} - if there are any current messages to be sent.
+     * @return {blob} - from the last MGA-ACK message
      */
-    function setCurrent(assistMsgs) {
-        if (assistMsgs == null) return false;
-
-        // Split out messages
-        while(assistMsgs.tell() < assistMsgs.len()) {
-            // Read header & extract length
-            local msg = assistMsgs.readstring(6);
-            local bodylen = msg[4] | (msg[5] << 8);
-            // Read message body & checksum bytes
-            local body = assistMsgs.readstring(2 + bodylen);
-
-            // Push message into array
-            _assist.push(msg + body);
-        }
-
-        return (_assist.len() > 0);
-    }
-
-
-    /**
-     * @typedef {table} AssistWriteError
-     * @property {string} desc - Error message for the type of write error encountered.
-     * @property {blob} payload - The MGA-ACK message payload - this message contains the raw error info.
-    */
-
-    /**
-     * Begins the loop that writes the current assist message queue to u-blox module.
-     *
-     * @param {onAssistWriteDoneCallback} onDone - Callback function that is triggered when all messages
-     *      in queue have been written to the Ublox module.
-     */
-    /**
-     * Callback to be executed when all assist messages have been written to Ublox module.
-     *
-     * @callback onAssistWriteDoneCallback
-     * @param {AssistWriteError[]|null} errors - Null if no errors were found, otherwise a array of error tables.
-     */
-    function sendCurrent(onDone = null) {
-        _assistDone = onDone;
-        _writeAssist();
+    function getMgaAck() {
+        return _mgaACK;
     }
 
     /**
-     * Stores Offline Assist messages to SPI organized by file name. When messages are stored toggles flag that
-     * indicates messages have been refreshed. This method will throw an error if the class was not initialized
-     * with SPI Flash File System.
+     * Uses the imp API date method to create a date string. (This matches the agent library date string formatter)
      *
-     * @param {table} msgsByFileName - table of messages from Offline Assist Web service. Table slots should be
-     *      file name (i.e. a date string) and values should be string or blob of all the MGA-ANO messages that
-     *      correspond to that file name.
-     */
-    function persistOfflineMsgs(msgsByFileName) {
-        // We can only use offline assist if we have valid spi flash storage
-        if (_sffs == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_OFFLINE_ASSIST;
-
-        // Store messages by date
-        foreach(day, msgs in msgsByFileName) {
-            // If day exists, delete it as new data will be fresher
-            if (_sffs.fileExists(day)) {
-                _sffs.eraseFile(day);
-            }
-
-            // Write day msgs
-            local file = _sffs.open(day, "w");
-            file.write(msgs);
-            file.close();
-        }
-
-        // Toggle flag that msgs have been refreshed
-        _assistOfflineRefreshed = true;
-    }
-
-    /**
-     * Retrieves file from SPI Flash storage. This method will throw an error if the class was not initialized
-     * with SPI Flash File System.
-     *
-     * @param {string} fileName - name of the file.
-     *
-     * @return {blob|null} - stored messages for the file specified or null if no file by that name
-     */
-    function getPersistedFile(fileName) {
-        // We can only use offline assist if we have valid spi flash storage
-        if (_sffs == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_OFFLINE_ASSIST;
-
-        // Does assist file exist?
-        if (!_sffs.fileExists(fileName)) return null;
-
-        // Open, then read and split into the assist send queue
-        local file = _sffs.open(fileName, "r");
-        local msgs = file.read();
-        file.close();
-
-        return msgs;
-    }
-
-    /**
-     * Uses the imp API date method to create a date string.
-     *
+     * @param {[d]} table - table returned by imp API date method.
      * @return {string} - date fromatted YYYYMMDD
      */
     function getDateString(d = null) {
@@ -250,12 +135,30 @@ class UBloxAssistNow {
     }
 
     /**
-     * Returns boolean, if Offline Assist messages have been stored since boot.
+     * @typedef {table} AssistWriteError
+     * @property {string} desc - Error message for the type of write error encountered.
+     * @property {blob} payload - The MGA-ACK message payload - this message contains the raw error info.
+    */
+
+    /**
+     * Creates a message queue and begins the loop that writes the current assist message queue to u-blox module.
      *
-     * @return {bool}
+     * @param {blob} assistMsgs - Takes blob of messages from AssistNow Online web request or the persisted
+     *      AssistNow Offline messages for today's date.
+     * @param {onAssistWriteDoneCallback} onDone - Callback function that is triggered when all messages
+     *      in queue have been written to the Ublox module.
      */
-    function assistOfflineRefreshed() {
-        return _assistOfflineRefreshed;
+    /**
+     * Callback to be executed when all assist messages have been written to Ublox module.
+     *
+     * @callback onAssistWriteDoneCallback
+     * @param {AssistWriteError[]|null} errors - Null if no errors were found, otherwise a array of error tables.
+     */
+    function writeAssistNow(assistMsgs, onDone = null) {
+        // Set callback
+        _assistDone = onDone;
+        // Write messages if any
+        _createAssistQueue() ? _writeAssist() : _assistDone(null);
     }
 
     /**
@@ -263,10 +166,9 @@ class UBloxAssistNow {
      * is valid, an MGA_INI_TIME_ASSIST_UTC message is written to u-blox module.
      *
      * @param {integer} currYear - Current year (ie 2019).
-     *
      * @return {bool} - if date was valid and assist message was written to u-blox
      */
-    function sendUtcTimeAssist(currYear) {
+    function writeUtcTimeAssist(currYear) {
         local d = date();
 
         if (d.year >= currYear) {
@@ -295,20 +197,47 @@ class UBloxAssistNow {
         return false;
     }
 
+    //  Takes a blob of binary messages, splits them into individual messages that are then stored in the currrent
+    //  message queue, ready to be written to the u-blox module when sendCurrent method is called.
+    //  @param {blob} assistMsgs - Takes blob of messages from AssistNow Online web request or the persisted
+    //        AssistNow Offline messages for today's date.
+    // @return {bool} - if there are any current messages to be sent.
+    function _createAssistQueue(assistMsgs) {
+        if (assistMsgs == null) return false;
+
+        // Split out messages
+        while(assistMsgs.tell() < assistMsgs.len()) {
+            // Read header & extract length
+            local msg = assistMsgs.readstring(6);
+            local bodylen = msg[4] | (msg[5] << 8);
+            // Read message body & checksum bytes
+            local body = assistMsgs.readstring(2 + bodylen);
+
+            // Push message into array
+            _assist.push(msg + body);
+        }
+
+        return (_assist.len() > 0);
+    }
+
     // register handlers for 0x0a04, and 0x1360, notify user that they should not
     // define a handlers for 1360 or 0x0a04 if using this library - repsonse from
     // 0x0a04 can be retrived using getMonVer function.
     function _init() {
+        _ubx.blockAssistNowMsgCallbacks = false;
         // Register handlers
         _ubx.registerOnMessageCallback(UBLOX_ASSIST_NOW_CONST.MON_VER_CLASS_ID, _monVerMsgHandler.bindenv(this));
         _ubx.registerOnMessageCallback(UBLOX_ASSIST_NOW_CONST.MGA_ACK_CLASS_ID, _mgaAckMsgHandler.bindenv(this));
+        _ubx.blockAssistNowMsgCallbacks = true;
 
         // Test GPS up and get protocol version
         _ubx.writeUBX(UBLOX_ASSIST_NOW_CONST.MON_VER_CLASS_ID, "");
     }
 
     function _mgaAckMsgHandler(payload) {
-        local res = UbxMsgParser[UBLOX_ASSIST_NOW_CONST.MGA_ACK_CLASS_ID](payload);
+        _mgaACK = payload;
+
+        local res = _parseMgaAck(payload);
         local error = res.error;
 
         // Msg was not used by receiver, add error to _assistErrors
@@ -352,36 +281,32 @@ class UBloxAssistNow {
 
     function _monVerMsgHandler(payload) {
         // Store payload, so user can have access to it.
-        local _monVer = UbxMsgParser[UBLOX_ASSIST_NOW_CONST.MON_VER_CLASS_ID](payload);
+        _monVer = payload;
 
         // Do this only on boot
         if (!_gpsReady) {
-            if (_monVer.error) throw format(UBLOX_ASSIST_NOW_CONST.ERROR_INITIALIZATION_FAILED, _monVer.error);
+            // Get protocol version, this throws error if one is not found
+            local protoVer = _getProtVer(payload);
+
+            // Confirm protocol version is supported
+            local ver = _getCfgNavx5MsgVersion(protoVer);
+            if (ver == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_PROTOCOL_VERSION_NOT_SUPPORTED;
 
             _gpsReady = true;
 
-            if ("protver" in _monVer) {
-                // Confirm protocol version is supported
-                local ver = _getCfgNavx5MsgVersion(_monVer.protver);
-                if (ver == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_PROTOCOL_VERSION_NOT_SUPPORTED;
+            // Create payload to enable ACKs for aiding packets
+            local navPayload = (ver == UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3) ?
+                blob(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3_LEN) :
+                blob(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_0_2_LEN);
+            navPayload.writen(ver, 'w');
+            // Set mask bits so only ACK bits are modified
+            navPayload.writen(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_MASK_1_SET_ASSIST_ACK, 'w');
+            // Set enable ACK bit
+            navPayload.seek(17, 'b');
+            navPayload.writen(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_ENABLE_ASSIST_ACK, 'b');
 
-                // Create payload to enable ACKs for aiding packets
-                local payload = (ver == UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3) ?
-                    blob(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3_LEN) :
-                    blob(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_0_2_LEN);
-                payload.writen(ver, 'w');
-                // Set mask bits so only ACK bits are modified
-                payload.writen(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_MASK_1_SET_ASSIST_ACK, 'w');
-                // Set enable ACK bit
-                payload.seek(17, 'b');
-                payload.writen(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_ENABLE_ASSIST_ACK, 'b');
-
-                // Write UBX payload
-                _ubx.writeUBX(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_CLASS_ID, payload);
-            } else {
-                // We cannot create a payload without knowing the protversion
-                throw UBLOX_ASSIST_NOW_CONST.ERROR_PROTOCOL_VERSION_NOT_SUPPORTED;
-            }
+            // Write UBX payload
+            _ubx.writeUBX(UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_CLASS_ID, navPayload);
         }
     }
 
@@ -433,6 +358,70 @@ class UBloxAssistNow {
                 return UBLOX_ASSIST_NOW_CONST.CFG_NAVX5_MSG_VER_3;
         }
         return null;
+    }
+
+
+
+    // Parses 0x1360 (MGA_ACK) UBX message payload.
+    // param (blob) payload - parses 8 bytes bytes MGA_ACK message payload.
+    // returns table - UBX_MGA_ACK
+    //   key (integer) type - Type of acknowledgment: 0 = The message was not
+    //      used by the receiver (see infoCode field for an indication of why), 1 = The
+    //      message was accepted for use by the receiver (the infoCode field will be 0)
+    //   key (integer) version - Message version (0x00 for this version)
+    //   key (integer) infoCode - Provides greater information on what the
+    //      receiver chose to do with the message contents: 0 = The receiver accepted
+    //      the data, 1 = The receiver doesn't know the time so can't use the data
+    //      (To resolve this a UBX-MGA-INITIME_UTC message should be supplied first),
+    //      2 = The message version is not supported by the receiver, 3 = The message
+    //      size does not match the message version, 4 = The message data could not be
+    //      stored to the database, 5 = The receiver is not ready to use the message
+    //      data, 6 = The message type is unknown
+    //   key (integer) msgId - UBX message ID of the ack'ed message
+    //   key (blob) msgPayloadStart - The first 4 bytes of the ack'ed message's payload
+    function _parseMgaAck(payload) {
+        // 0x1360: Expected payload size = 8 bytes
+        try {
+            payload.seek(0, 'b');
+            return {
+                "type"            : payload.readn('b'),
+                "version"         : payload.readn('b'),
+                "infoCode"        : payload.readn('b'),
+                "msgId"           : payload.readn('b'),
+                "msgPayloadStart" : payload.readblob(4),
+                "error"           : null,
+                "payload"         : payload
+            }
+        } catch(e) {
+            return {
+                "error"   : format("Error: Could not parse payload, %s", e),
+                "payload" : payload
+            }
+        }
+    }
+
+    // Returns protocol version string or throws an error
+    function _getProtVer(payload) {
+        // 0x0a04: Expected payload size = 40 + 30*n bytes
+        try {
+            payload.seek(0, 'b');
+            local str = payload.readstring(payload.len());
+            // Find Protocol Version in payload
+            local sIdx = str.find("PROTVER");
+            if (sIdx != null) {
+                // Info strings are be 30 bytes long, grab just the protocol version info string
+                local protVer = (str.len() - sIdx > 30) ? str.slice(sIdx, sIdx + 30) : str.slice(sIdx);
+                // Grab just the version number as a string
+                local ex = regexp(@"(\d+)[.](\d+)");
+                local match = ex.search(protVer);
+                if (match != null) {
+                    return protVer.slice(match.begin, match.end);
+                }
+            }
+            throw format(UBLOX_ASSIST_NOW_CONST.ERROR_INITIALIZATION_FAILED, "Protocol version not found.");
+        } catch(e) {
+            throw format(UBLOX_ASSIST_NOW_CONST.ERROR_INITIALIZATION_FAILED, "Protocol version parsing error: " + e);
+        }
     }
 
 }

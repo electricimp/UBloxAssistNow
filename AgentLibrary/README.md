@@ -6,7 +6,7 @@ Agent library used to retrieve data from u-blox AssistNow servers. Data supplied
 
 , so http requests will come from a single server, and so the u-blox Assist Now services may limit these requests.
 
-**To add this library to your project, add** `#require "UBloxAssistNow.agent.lib.nut:0.1.0"` **to the top of your device code.**
+**To add this library to your project, add** `#require "UBloxAssistNow.agent.lib.nut:1.0.0"` **to the top of your device code.**
 
 ## Class Usage ##
 

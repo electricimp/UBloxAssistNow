@@ -49,7 +49,7 @@ class UBloxAssistNow {
     // NOTE: Due to u-blox Assist Now usage limits this library may not work at scale. Many
     // imp http requests will come from a single server, and so the u-blox Assist Now services
     // may limit these requests.
-    static VERSION = "0.1.0";
+    static VERSION = "1.0.0";
 
     _token   = null;
     _headers = null;

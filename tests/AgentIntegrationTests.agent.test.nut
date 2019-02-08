@@ -37,6 +37,7 @@ const STATUS_CODE_FAIL = 400;
 const STATUS_CODE_FAIL_2 = 404;
 const STATUS_CODE_OVERUSE = 403;
 const REQUEST_FAIL_BODY = "Bad Request";
+const U_BLOX_AUTH_TOKEN = "_UBLOX_AUTH_TOKEN_";
 
 // This must be over 2x longer than StubbedHttp request timer for retry test to pass.
 const ASYNC_TEST_TIMEOUT = 5;
@@ -44,11 +45,6 @@ const ASYNC_TEST_TIMEOUT = 5;
 // AssistNow System Integration Testing, does not hit AssistNow endpoints
 class AgentIntegrationTests extends ImpTestCase {
 
-    token = "_UBLOX_AUTH_TOKEN_";
-    onlineReqMainKey = null;
-    onlineReqBackUpKey = null;
-    offlineReqMainKey = null;
-    offlineReqBackUpKey = null;
     assist = null;
 
     OFFLINE_REQUEST_SUCCESS_HEADER = {
@@ -272,13 +268,7 @@ class AgentIntegrationTests extends ImpTestCase {
     ];
 
     function setUp() {
-        assist = UBloxAssistNow(token);
-        // User format to add options
-        onlineReqMainKey    = http.getReqKey("GET", "https://online-live1.services.u-blox.com/GetOnlineData.ashx?token=" + token + ";%s");
-        onlineReqBackUpKey  = http.getReqKey("GET", "https://online-live2.services.u-blox.com/GetOnlineData.ashx?token=" + token + ";%s");
-        offlineReqMainKey   = http.getReqKey("GET", "https://offline-live1.services.u-blox.com/GetOfflineData.ashx?token=" + token + ";%s");
-        offlineReqBackUpKey = http.getReqKey("GET", "https://offline-live2.services.u-blox.com/GetOfflineData.ashx?token=" + token + ";%s");
-
+        assist = UBloxAssistNow(U_BLOX_AUTH_TOKEN);
         return "SetUp complete";
     }
 
@@ -286,8 +276,8 @@ class AgentIntegrationTests extends ImpTestCase {
         // SetUp
         assist._headers.clear();
         local newHeaders = {"Content-Type" : "application/ubx"};
-        local onlineReqKey = format(onlineReqMainKey, "");
-        local offlineReqKey = format(offlineReqMainKey, "");
+        local onlineReqKey = http.getReqKey("GET", "https://online-live1.services.u-blox.com/GetOnlineData.ashx?token=" + U_BLOX_AUTH_TOKEN + ";");
+        local offlineReqKey = http.getReqKey("GET", "https://offline-live1.services.u-blox.com/GetOfflineData.ashx?token=" + U_BLOX_AUTH_TOKEN + ";");
 
         // Test
         // Confirm headers is set
@@ -972,10 +962,8 @@ class AgentIntegrationTests extends ImpTestCase {
         http.clearPending();
 
         // Set up server responses (since we are not encodeing params, we can set these up here)
-        local url1 = "https://online-live1.services.u-blox.com/GetOnlineData.ashx?token=" + token + ";";
-        local url2 = "https://online-live2.services.u-blox.com/GetOnlineData.ashx?token=" + token + ";";
-        http.setServerResponseFor("GET", url1, expectedRes1);
-        http.setServerResponseFor("GET", url2, expectedRes2);
+        http.setServerResponseFor("GET", "https://online-live1.services.u-blox.com/GetOnlineData.ashx?token=" + U_BLOX_AUTH_TOKEN + ";", expectedRes1);
+        http.setServerResponseFor("GET", "https://online-live2.services.u-blox.com/GetOnlineData.ashx?token=" + U_BLOX_AUTH_TOKEN + ";", expectedRes2);
 
         return Promise(function(resolve, reject) {
             // Check for expected error in response
