@@ -5,7 +5,6 @@
   "allowDisconnect": false,
   "builderCache": false,
   "testFiles": [
-    "*.test.nut",
-    "tests/**/*.test.nut"
+      "tests/DeviceAssistNowTests.device.test.nut"
   ]
 }

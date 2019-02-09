@@ -6,7 +6,7 @@ Device library that manages delivery of the AssistNow messages to the u-blox M8N
 
 ## Class Usage ##
 
-This device-side library is for managing the writing of u-blox Assist Now messages to the u-blox M8N. Assist Now messages help Ublox M8N get a GPS fix faster. This class is dependent on the UBloxM8N library. If this library is included, message callbacks cannot be registered for MGA-ACK (0x1360) and MON-VER (0x0a04), and doing so with the UBloxM8N library will throw an error. Payloads for these messages will be available using Class Methods getMonVer and getMgaAck.
+This device-side library is for managing the writing of u-blox Assist Now messages to the u-blox M8N. Assist Now messages help Ublox M8N get a GPS fix faster. This class is dependent on the UBloxM8N library. If this library is included, message callbacks cannot be registered for MGA-ACK (0x1360) and MON-VER (0x0a04), and doing so with the UBloxM8N library will throw an error. Payload for the latest MON-VER message will be available using Class Method getMonVer.
 
 **Note:** This library does handle the storage of Offline Assist Now messages only the writing of messages to the M8N.
 

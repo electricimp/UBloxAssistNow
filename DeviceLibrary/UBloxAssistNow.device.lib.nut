@@ -43,6 +43,8 @@ enum UBLOX_ASSIST_NOW_CONST {
     CFG_NAVX5_MSG_MASK_1_SET_ASSIST_ACK  = 0x0400,
     CFG_NAVX5_MSG_ENABLE_ASSIST_ACK      = 0x01,
 
+    WRITE_TIMEOUT                        = 2,
+
     ERROR_INITIALIZATION_FAILED          = "Error: Initialization failed. %s",
     ERROR_PROTOCOL_VERSION_NOT_SUPPORTED = "Error: Protocol version not supported",
     ERROR_UBLOX_M8N_REQUIRED             = "Error: UBloxM8N required",
@@ -53,9 +55,8 @@ enum UBLOX_ASSIST_NOW_CONST {
  * the UBloxM8N (Driver) and UbxMsgParser libraries.
  * This class does not manage the stoage of Assist Offline messages, only the writing of assist messages
  * (both Online and Offline) to the M8N.
- * This class registers message callbacks for MGA-ACK (0x1360) and MON-VER (0x0a04) and uses the Parser to
- * to process these messages. If using this class the code **MUST NOT** register handlers or change the
- * parser methods for these messages.
+ * This class registers message callbacks for MGA-ACK (0x1360) and MON-VER (0x0a04). If using this
+ * class the code **MUST NOT** register handlers.
  *
  * @class
  */
@@ -73,12 +74,12 @@ class UBloxAssistNow {
     // Collects all errors encountered when writing assist messages to module
     _assistErrors = null;
 
+    _writeTimer = null;
 
     // Flag that indicates we have recieved our fist communication from UBloxM8N
     _gpsReady = null;
     // Stores the latest parsed payload from MON-VER message
     _monVer = null;
-    _mgaACK = null;
 
     /**
      * Initializes Assist Now library. The constructor will enable ACKs for aiding packets, and register message specific
@@ -111,15 +112,6 @@ class UBloxAssistNow {
      */
     function getMonVer() {
         return _monVer;
-    }
-
-    /**
-     * Returns the payload from the last MGA-ACK message
-     *
-     * @return {blob} - from the last MGA-ACK message
-     */
-    function getMgaAck() {
-        return _mgaACK;
     }
 
     /**
@@ -158,7 +150,7 @@ class UBloxAssistNow {
         // Set callback
         _assistDone = onDone;
         // Write messages if any
-        _createAssistQueue() ? _writeAssist() : _assistDone(null);
+        _createAssistQueue(assistMsgs) ? _writeAssist() : _assistDone(null);
     }
 
     /**
@@ -171,7 +163,7 @@ class UBloxAssistNow {
     function writeUtcTimeAssist(currYear) {
         local d = date();
 
-        if (d.year >= currYear) {
+        if (d.year <= currYear) {
             // Form UBX-MGA-INI-TIME_UTC message
             local timeAssist = blob(UBLOX_ASSIST_NOW_CONST.MGA_INI_TIME_UTC_LEN);
 
@@ -206,6 +198,7 @@ class UBloxAssistNow {
         if (assistMsgs == null) return false;
 
         // Split out messages
+        assistMsgs.seek(0, 'b');
         while(assistMsgs.tell() < assistMsgs.len()) {
             // Read header & extract length
             local msg = assistMsgs.readstring(6);
@@ -235,8 +228,7 @@ class UBloxAssistNow {
     }
 
     function _mgaAckMsgHandler(payload) {
-        _mgaACK = payload;
-
+        _cancelWriteTimer();
         local res = _parseMgaAck(payload);
         local error = res.error;
 
@@ -321,8 +313,20 @@ class UBloxAssistNow {
             // Remove it and send: it's pre-formatted so just dump it to the UART
             local entry = _assist.remove(0);
             _ubx.writeMessage(entry);
+            // Set timeout for write
+            _cancelWriteTimer();
+            _writeTimer = imp.wakeup(UBLOX_ASSIST_NOW_CONST.WRITE_TIMEOUT, function() {
+                _cancelWriteTimer();
+                local err = {
+                    "payload" : entry,
+                    "desc" : "Error: GNSS Assistance message timed out"
+                }
+                _assistErrors.push(err);
+                _writeAssist();
+            }.bindenv(this));
             // server.log(format("Sending %02x%02x len %d", entry[2], entry[3], entry.len()));
         } else {
+            _cancelWriteTimer();
             // Trigger done callback when all packets have been sent
             if (_assistDone) {
                 if (_assistErrors.len() > 0) {
@@ -359,8 +363,6 @@ class UBloxAssistNow {
         }
         return null;
     }
-
-
 
     // Parses 0x1360 (MGA_ACK) UBX message payload.
     // param (blob) payload - parses 8 bytes bytes MGA_ACK message payload.
@@ -400,6 +402,13 @@ class UBloxAssistNow {
         }
     }
 
+    function _cancelWriteTimer() {
+        if (_writeTimer != null) {
+            imp.cancelwakeup(_writeTimer);
+            _writeTimer = null;
+        }
+    }
+
     // Returns protocol version string or throws an error
     function _getProtVer(payload) {
         // 0x0a04: Expected payload size = 40 + 30*n bytes
@@ -418,9 +427,13 @@ class UBloxAssistNow {
                     return protVer.slice(match.begin, match.end);
                 }
             }
-            throw format(UBLOX_ASSIST_NOW_CONST.ERROR_INITIALIZATION_FAILED, "Protocol version not found.");
+            throw "";
         } catch(e) {
-            throw format(UBLOX_ASSIST_NOW_CONST.ERROR_INITIALIZATION_FAILED, "Protocol version parsing error: " + e);
+            if (e.len() == 0) {
+                throw format(UBLOX_ASSIST_NOW_CONST.ERROR_INITIALIZATION_FAILED, "Protocol version not found.");
+            } else {
+                throw format(UBLOX_ASSIST_NOW_CONST.ERROR_INITIALIZATION_FAILED, "Protocol version parsing error: " + e);
+            }
         }
     }
 
