@@ -27,9 +27,10 @@
 
 #require "UBloxM8N.device.lib.nut:1.0.1"
 #require "UbxMsgParser.lib.nut:1.0.1"
+#require "UBloxAssistNow.device.lib.nut:0.1.0"
 #require "SPIFlashFileSystem.device.lib.nut:2.0.0"
 #require "ConnectionManager.lib.nut:3.1.0"
-#require "UBloxAssistNow.device.lib.nut:0.1.0"
+#require "JSONEncoder.class.nut:2.0.0"
 
 // CONFIGURE HELPER CLASSES
 // ----------------------------------------------------------------------------------------
@@ -88,10 +89,7 @@ Logger <- {
     }
 
     "formatObj" : function(obj) {
-        // TODO: JSON encode object
-        // Note: JSONEncoder library (v2.0.0) currently doesn't support blobs - throws error
-        // Just return object for now
-        return obj;
+        return JSONEncode.encode(obj);
     },
 
     "formatBinary" : function(bin) {
