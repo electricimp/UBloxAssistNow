@@ -48,14 +48,31 @@ A blob.
 
 ### writeAssistNow(*assistMsgs[, onDone]*) ###
 
-Takes a blob of binary messages, splits them into individual messages that are then written to the u-blox module one at a time asynchonously. If provided the *onDone* callback will be triggered when all messages have been writtin. The *onDone* callback takes one parameter *error* which is `null` if no errors were encountered otherwise it contains an array of error tables. (error table keys: "desc", "payload")
+Takes a blob of binary messages, splits them into individual messages that are then written to the u-blox module one at a time asynchonously. If provided the *onDone* callback will be triggered when all messages have been writtin. The *onDone* callback takes one parameter *errors* which is `null` if no errors were encountered otherwise it contains an array of tables.
 
 #### Parameters ####
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | *assistMsgs* | blob | Yes | Takes blob of messages from AssistNow Online web request or the persisted AssistNow Offline messages for today's date. |
-| *onDone* | function | No | A callback function that is triggered when all assist messages have been written to the M8N. This function has one parameter *error*, which is null if no errors were encountered when writing messages to the M8N or a array of error tables if an error was encountered. (error table keys: "desc", "payload") |
+| *onDone* | function | No | A callback function that is triggered when all assist messages have been written to the M8N. This function has one parameter *errors*, which is null if no errors were encountered when writing messages to the M8N or a array of tables if an error was encountered. (see below)|
+
+The *errors* table will always contain *error* and *payload* and may contain more keys:
+
+| Key | Type | Optional | Description |
+| --- | --- | --- |--- |
+| *error* | String | No | Error message for the type of error encountered |
+| *payload* | Blob | No | The raw MGA-ACK message payload |
+| *type* | Integer | Yes | Type of acknowledgment. 0 = Message not used by receiver, 1 = Message accepted by receiver |
+| *version* | Integer | Yes | Message version (0x00 for M8N) |
+| *infoCode* | Integer | Yes | What the receiver chose to do with the message contents. 0 =  The receiver accepted the data, 1 = The receiver doesn't know the time so can't
+use the data, 2 = The message version is not supported by the
+receiver, 3 = The message size does not match the
+message version, 4 = The message data could not be stored to the
+database, 5 = The receiver is not ready to use the message
+data, 6 = The message type is unknown |
+| *msgId* | Integer | Yes | UBX message ID of the ACK'ed message |
+| *msgId* | Blob | Yes | The first 4 bytes of the ACK'ed message's payload |
 
 #### Return Value ####
 

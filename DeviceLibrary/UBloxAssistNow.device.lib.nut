@@ -43,11 +43,22 @@ enum UBLOX_ASSIST_NOW_CONST {
     CFG_NAVX5_MSG_MASK_1_SET_ASSIST_ACK  = 0x0400,
     CFG_NAVX5_MSG_ENABLE_ASSIST_ACK      = 0x01,
 
-    WRITE_TIMEOUT                        = 2,
+    WRITE_TIMEOUT                        = 2
+}
 
-    ERROR_INITIALIZATION_FAILED          = "Error: Initialization failed. %s",
-    ERROR_PROTOCOL_VERSION_NOT_SUPPORTED = "Error: Protocol version not supported",
-    ERROR_UBLOX_M8N_REQUIRED             = "Error: UBloxM8N required",
+enum UBLOX_ASSIST_NOW_ERROR {
+    INITIALIZATION_FAILED          = "Error: Initialization failed. %s",
+    PROTOCOL_VERSION_NOT_SUPPORTED = "Error: Protocol version not supported",
+    UBLOX_M8N_REQUIRED             = "Error: UBloxM8N required",
+    GNSS_ASSIST_CANT_USE           = "Error: GNSS Assistance message can't be used. Receiver doesn't know the time.",
+    GNSS_ASSIST_VER_NOT_SUPPORTED  = "Error: GNSS Assistance message version not supported by receiver",
+    GNSS_ASSIST_SIZE_MISMATCH      = "Error: GNSS Assistance message size does not match message version",
+    GNSS_ASSIST_CANT_BE_STORED     = "Error: GNSS Assistance message data could not be stored",
+    GNSS_ASSIST_RECIEVER_NOT_READY = "Error: Receiver not ready to use GNSS Assistance message",
+    GNSS_ASSIST_TYPE_UNKNOWN       = "Error: GNSS Assistance message type unknown",
+    GNSS_ASSIST_UNDEFINED          = "Error: GNSS Assistance message undefined",
+    GNSS_ASSIST_WRITE_TIMEOUT      = "Error: GNSS Assistance write timed out",
+    PAYLOAD_PARSING                = "Error: Could not parse payload, %s"
 }
 
 /**
@@ -93,7 +104,7 @@ class UBloxAssistNow {
     constructor(ubx) {
         // add check for required libraries
         local rt = getroottable();
-        if (!("UBloxM8N" in rt)) throw UBLOX_ASSIST_NOW_CONST.ERROR_UBLOX_M8N_REQUIRED;
+        if (!("UBloxM8N" in rt)) throw UBLOX_ASSIST_NOW_ERROR.UBLOX_M8N_REQUIRED;
 
         _gpsReady = false;
         _assist = [];
@@ -127,9 +138,14 @@ class UBloxAssistNow {
     }
 
     /**
-     * @typedef {table} AssistWriteError
-     * @property {string} desc - Error message for the type of write error encountered.
-     * @property {blob} payload - The MGA-ACK message payload - this message contains the raw error info.
+     * @typedef {table} AssistWriteMessage
+     * @property {string} error - Error message for the type of write error encountered.
+     * @property {blob} payload - The raw MGA-ACK message payload.
+     * @property {integer} [type] - Type of acknowledgment (0 not used, 1 accepted by receiver)
+     * @property {integer} [version] - Message version (should be 0x00)
+     * @property {integer} [infoCode] - Integer that refers to what the receiver chose to do with the message contents
+     * @property {integer} [msgId] - UBX message Id of ACK'd message
+     * @property {blob} [msgPayloadStart] - First 4 bytes of ACK'd message paylaod
     */
 
     /**
@@ -144,7 +160,7 @@ class UBloxAssistNow {
      * Callback to be executed when all assist messages have been written to Ublox module.
      *
      * @callback onAssistWriteDoneCallback
-     * @param {AssistWriteError[]|null} errors - Null if no errors were found, otherwise a array of error tables.
+     * @param {AssistWriteMessage[]|null} errors - Null if no errors were found, otherwise a array of parsed ACK messages with error.
      */
     function writeAssistNow(assistMsgs, onDone = null) {
         // Set callback
@@ -232,39 +248,34 @@ class UBloxAssistNow {
         local res = _parseMgaAck(payload);
         local error = res.error;
 
-        // Msg was not used by receiver, add error to _assistErrors
-        // TODO: Decide if any of these errors stop the next write, and trigger done callback immediately
-        if (error != null || res.type == 0) {
-            err = {};
-            err.payload <- res;
-
-            if (res.infoCode != 0) {
-                switch(res.infoCode) {
-                    case 1:
-                        err.desc <- "Error: GNSS Assistance message can't be used. Receiver doesn't know the time.";
-                        break;
-                    case 2:
-                        err.desc <- "Error: GNSS Assistance message version not supported by receiver";
-                        break;
-                    case 3:
-                        err.desc <- "Error: GNSS Assistance message size does not match message version";
-                        break;
-                    case 4:
-                        err.desc <- "Error: GNSS Assistance message data could not be stored";
-                        break;
-                    case 5:
-                        err.desc <- "Error: Receiver not ready to use GNSS Assistance message";
-                        break;
-                    case 6:
-                        err.desc <- "Error: GNSS Assistance message type unknown";
-                        break;
-                }
+        if (error != null) {
+            // Parsing error encountered, add parsed response to assistErrors
+            _assistErrors.push(res);
+        } else if (res.type == 0) {
+            // Module encountered an error, update error in parsed response and add to assistErrors
+            switch(res.infoCode) {
+                case 1:
+                    res.error <- UBLOX_ASSIST_NOW_ERROR.GNSS_ASSIST_CANT_USE;
+                    break;
+                case 2:
+                    res.error <- UBLOX_ASSIST_NOW_ERROR.GNSS_ASSIST_VER_NOT_SUPPORTED;
+                    break;
+                case 3:
+                    res.error <- UBLOX_ASSIST_NOW_ERROR.GNSS_ASSIST_SIZE_MISMATCH;
+                    break;
+                case 4:
+                    res.error <- UBLOX_ASSIST_NOW_ERROR.GNSS_ASSIST_CANT_BE_STORED;
+                    break;
+                case 5:
+                    res.error <- UBLOX_ASSIST_NOW_ERROR.GNSS_ASSIST_RECIEVER_NOT_READY;
+                    break;
+                case 6:
+                    res.error <- UBLOX_ASSIST_NOW_ERROR.GNSS_ASSIST_TYPE_UNKNOWN;
+                    break;
+                default:
+                    res.error <- UBLOX_ASSIST_NOW_ERROR.GNSS_ASSIST_UNDEFINED;
             }
-
-            if (!("desc" in err)) {
-                err.desc <- (error) ? error : "Error: Undefined";
-            }
-            _assistErrors.push(err);
+            _assistErrors.push(res);
         }
 
         // Continue write
@@ -282,7 +293,7 @@ class UBloxAssistNow {
 
             // Confirm protocol version is supported
             local ver = _getCfgNavx5MsgVersion(protoVer);
-            if (ver == null) throw UBLOX_ASSIST_NOW_CONST.ERROR_PROTOCOL_VERSION_NOT_SUPPORTED;
+            if (ver == null) throw UBLOX_ASSIST_NOW_ERROR.PROTOCOL_VERSION_NOT_SUPPORTED;
 
             _gpsReady = true;
 
@@ -319,7 +330,7 @@ class UBloxAssistNow {
                 _cancelWriteTimer();
                 local err = {
                     "payload" : entry,
-                    "desc" : "Error: GNSS Assistance message timed out"
+                    "error" : UBLOX_ASSIST_NOW_ERROR.GNSS_ASSIST_WRITE_TIMEOUT
                 }
                 _assistErrors.push(err);
                 _writeAssist();
@@ -396,7 +407,7 @@ class UBloxAssistNow {
             }
         } catch(e) {
             return {
-                "error"   : format("Error: Could not parse payload, %s", e),
+                "error"   : format(UBLOX_ASSIST_NOW_ERROR.PAYLOAD_PARSING, e),
                 "payload" : payload
             }
         }
@@ -430,9 +441,9 @@ class UBloxAssistNow {
             throw "";
         } catch(e) {
             if (e.len() == 0) {
-                throw format(UBLOX_ASSIST_NOW_CONST.ERROR_INITIALIZATION_FAILED, "Protocol version not found.");
+                throw format(UBLOX_ASSIST_NOW_ERROR.INITIALIZATION_FAILED, "Protocol version not found.");
             } else {
-                throw format(UBLOX_ASSIST_NOW_CONST.ERROR_INITIALIZATION_FAILED, "Protocol version parsing error: " + e);
+                throw format(UBLOX_ASSIST_NOW_ERROR.INITIALIZATION_FAILED, "Protocol version parsing error: " + e);
             }
         }
     }
