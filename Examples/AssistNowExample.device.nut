@@ -86,7 +86,7 @@ Logger <- {
         if (logLevel <= level && _areConnected()) {
             server.log("--------------------------------------------");
         }
-    }
+    },
 
     "formatObj" : function(obj) {
         return JSONEncode.encode(obj);
