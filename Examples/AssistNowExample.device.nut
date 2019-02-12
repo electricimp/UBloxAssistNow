@@ -58,37 +58,37 @@ Logger <- {
     }
 
     "trace" : function(msg) {
-        if (logLevel >= LOG_LEVEL.TRACE && _areConnected()) {
+        if (logLevel <= LOG_LEVEL.TRACE && _areConnected()) {
             server.log("[TRACE] " + msg.tostring());
         }
     },
 
     "debug" : function(msg) {
-        if (logLevel >= LOG_LEVEL.DEBUG && _areConnected()) {
+        if (logLevel <= LOG_LEVEL.DEBUG && _areConnected()) {
             server.log("[DEBUG] " + msg.tostring());
         }
     },
 
     "info"  : function(msg) {
-        if (logLevel >= LOG_LEVEL.INFO && _areConnected()) {
+        if (logLevel <= LOG_LEVEL.INFO && _areConnected()) {
             server.log("[INFO] " + msg.tostring());
         }
     },
 
     "error" : function(msg) {
-        if (logLevel >= LOG_LEVEL.INFO && _areConnected()) {
+        if (logLevel <= LOG_LEVEL.ERROR && _areConnected()) {
             server.error("[ERROR] " + msg.tostring());
         }
     },
 
     "logDivider" : function(level) {
-        if (level >= logLevel && _areConnected()) {
+        if (logLevel <= level && _areConnected()) {
             server.log("--------------------------------------------");
         }
     }
 
     "formatObj" : function(obj) {
-        // TODO: encode / pretty print (needs to support blobs)
+        // TODO: json encode object - note: JSON.encode currently doesn't support blobs)
         return obj;
     },
 
@@ -126,7 +126,7 @@ class Persist {
 
     constructor() {
         _sffs = SPIFlashFileSystem(0x000000, 256 * 1024);
-        sffs.init();
+        _sffs.init();
     }
 
     /**
@@ -138,7 +138,7 @@ class Persist {
      */
     function writeFiles(dataByFileName) {
         // Store messages by date
-        foreach(day, msgs in msgsByFileName) {
+        foreach(day, msgs in dataByFileName) {
             // If day exists, delete it as new data will be fresher
             if (_sffs.fileExists(day)) {
                 _sffs.eraseFile(day);
@@ -177,7 +177,7 @@ class Persist {
      */
     function eraseAllBut(safeFileName) {
         if (!_sffs.fileExists(safeFileName)) {
-            sffs.eraseAll();
+            _sffs.eraseAll();
         } else {
             local files = getFileList();
             foreach(file in files) {
@@ -223,19 +223,19 @@ class Location {
         ubx.configure({ "baudRate"     : 115200,
                         "outputMode"   : UBLOX_M8N_MSG_MODE.UBX_ONLY,
                         "inputMode"    : UBLOX_M8N_MSG_MODE.BOTH,
-                        "defaultOnMsg" : _onMessage });
-
-        // Register command ACK and NAK callbacks
-        ubx.registerOnMessageCallback(UBX_MSG_PARSER_CLASS_MSG_ID.ACK_ACK, ackHandler);
-        ubx.registerOnMessageCallback(UBX_MSG_PARSER_CLASS_MSG_ID.ACK_NAK, nakHandler);
+                        "defaultOnMsg" : _onMessage.bindenv(this) });
 
         assist = UBloxAssistNow(ubx);
 
+        // Register command ACK and NAK callbacks
+        ubx.registerOnMessageCallback(UBX_MSG_PARSER_CLASS_MSG_ID.ACK_ACK, _onACK.bindenv(this));
+        ubx.registerOnMessageCallback(UBX_MSG_PARSER_CLASS_MSG_ID.ACK_NAK, _onNAK.bindenv(this));
+
         Logger.trace("Enable navigation messages...");
         // Satellite Information every 5 sec
-        ubx.enableUbxMsg(UBX_MSG_PARSER_CLASS_MSG_ID.NAV_SAT, 5, satMsgHandler);
+        ubx.enableUbxMsg(UBX_MSG_PARSER_CLASS_MSG_ID.NAV_SAT, 5, _onSatMsg.bindenv(this));
         // Position Velocity Time Solution every 1 sec
-        ubx.enableUbxMsg(UBX_MSG_PARSER_CLASS_MSG_ID.NAV_PVT, 1, navMsgHandler);
+        ubx.enableUbxMsg(UBX_MSG_PARSER_CLASS_MSG_ID.NAV_PVT, 1, _onNavMsg.bindenv(this));
     }
 
     function getLocation(accuracy, onAccurateFix) {
@@ -404,7 +404,7 @@ class Location {
 
     function _onUbxMsg(payload, classId) {
         Logger.trace("In ubx msg handler...");
-        Logger.logDivider(LOG_LEVEL.DEBUG);
+        Logger.logDivider(LOG_LEVEL.TRACE);
 
         // Log message info
         Logger.debug(format("Msg Class ID: 0x%04X", classId));
@@ -418,7 +418,7 @@ class Location {
             Logger.debug(Logger.formatBinary(payload));
         }
 
-        Logger.logDivider(LOG_LEVEL.DEBUG);
+        Logger.logDivider(LOG_LEVEL.TRACE);
     }
 
     function _onNmeaMsg(sentence) {
@@ -478,7 +478,7 @@ class Application {
         registerListeners();
 
         writeAssist();
-        getLocation(GPS_ACCURACY_TARGET, onAccurateFix);
+        location.getLocation(GPS_ACCURACY_TARGET, onAccurateFix.bindenv(this));
 
         cm.onConnect(onConnection.bindenv(this));
         cm.onTimeout(onConnTimeout.bindenv(this));
@@ -561,9 +561,9 @@ class Application {
     }
 
     function onAccurateFix(fixReport) {
-        Logger.debug(format("GPS accuracy %.1fm", fix.accuracy));
+        Logger.debug(format("GPS accuracy %.1fm", fixReport.accuracy));
         // Turn off power to GPS to conserve power
-        powergate.configure(DIGITAL_OUT, 0);
+        powerGate.configure(DIGITAL_OUT, 0);
         report.fix <- fixReport;
 
         // Check if we have completed all tasks and can go to sleep
@@ -604,8 +604,8 @@ class Application {
     }
 
     function configureHardware() {
-        powergate = hardware.pinYG;
-        powergate.configure(DIGITAL_OUT, 1);
+        powerGate = hardware.pinYG;
+        powerGate.configure(DIGITAL_OUT, 1);
 
         gpsUART = hardware.uartNU;
     }
