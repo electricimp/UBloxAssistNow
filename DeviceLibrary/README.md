@@ -75,6 +75,20 @@ Checks if the imp has a valid UTC time by checking that the year returned by the
 
 Boolean, `true` if imp has a valid date and message was sent, `false` if date was not valid.
 
+### setAssistNowWriteTimeout(*timeout*) ###
+
+Controls the maximum time to wait for an ACK before writing next Assist Now message. If no ACK is received in this time, an error will be added to the writeAssistNow onDone callback parameter. The default timeout is 2s, and works well when the UART baud rate is set to 11520. If another baud rate is used, use this method to adjust the timeout.
+
+#### Parameters ####
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| *timeout* | integer/float | Yes | Maximum time to wait for an Assist Now ACK. |
+
+#### Return Value ####
+
+None.
+
 ### getDateString(*[dateTable]*) ###
 
 Uses the table returned by the imp API `date()` method to create a date string formatted YYYYMMDD. This is the same date formatter used by default in the UBloxAssistNow agent library to organize Offline Assist Now messages by date.

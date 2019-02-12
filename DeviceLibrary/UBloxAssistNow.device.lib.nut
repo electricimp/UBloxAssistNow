@@ -43,7 +43,7 @@ enum UBLOX_ASSIST_NOW_CONST {
     CFG_NAVX5_MSG_MASK_1_SET_ASSIST_ACK  = 0x0400,
     CFG_NAVX5_MSG_ENABLE_ASSIST_ACK      = 0x01,
 
-    WRITE_TIMEOUT                        = 2
+    DEFAULT_WRITE_TIMEOUT                = 2
 }
 
 enum UBLOX_ASSIST_NOW_ERROR {
@@ -86,6 +86,7 @@ class UBloxAssistNow {
     _assistErrors = null;
 
     _writeTimer = null;
+    _writeTimeout = null;
 
     // Flag that indicates we have recieved our fist communication from UBloxM8N
     _gpsReady = null;
@@ -111,6 +112,7 @@ class UBloxAssistNow {
         _assistErrors = [];
 
         _ubx  = ubx;
+        _writeTimeout = UBLOX_ASSIST_NOW_CONST.DEFAULT_WRITE_TIMEOUT;
 
         // Configures handlers for MGA-ACK and MON-VER messages, checks protocol version, confirms gps is ready/receiving commands
         _init();
@@ -123,6 +125,17 @@ class UBloxAssistNow {
      */
     function getMonVer() {
         return _monVer;
+    }
+
+    /**
+     * Controls the max wait to receive an ACK before writing next Assist Now message.
+     * If no ACK is received in this time, a message will be added to the error array
+     * passed to the writeAssistNow onDone callback. Default is 2s, and works well for
+     * UART baud rate of 11520. If another baud rate is used, use this method to adjust
+     * the timeout.
+     */
+    function setAssistNowWriteTimeout(newTimeout) {
+        _writeTimeout = newTimeout;
     }
 
     /**
@@ -326,7 +339,7 @@ class UBloxAssistNow {
             _ubx.writeMessage(entry);
             // Set timeout for write
             _cancelWriteTimer();
-            _writeTimer = imp.wakeup(UBLOX_ASSIST_NOW_CONST.WRITE_TIMEOUT, function() {
+            _writeTimer = imp.wakeup(_writeTimeout, function() {
                 _cancelWriteTimer();
                 local err = {
                     "payload" : entry,

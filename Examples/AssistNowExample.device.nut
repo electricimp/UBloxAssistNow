@@ -88,7 +88,9 @@ Logger <- {
     }
 
     "formatObj" : function(obj) {
-        // TODO: json encode object - note: JSON.encode currently doesn't support blobs)
+        // TODO: JSON encode object
+        // Note: JSONEncoder library (v2.0.0) currently doesn't support blobs - throws error
+        // Just return object for now
         return obj;
     },
 
