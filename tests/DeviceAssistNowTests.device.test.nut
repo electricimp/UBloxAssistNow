@@ -391,6 +391,47 @@ class DeviceAssistNowTests extends ImpTestCase {
         return "getProtVer with invalid payloads returned expected results";
     }
 
+    function testSetAssistNowWriteTimeout() {
+        local assistOfflineMsgs = ASSIST_MSG_1_WRITE + ASSIST_MSG_2_WRITE;
+        // The testing stubbed UART is a very tight loop, so set this to 0 so we see timeout errors on all messages
+        assist.setAssistNowWriteTimeout(0);
+
+        // Start from a neutral place
+        _resetForAssistNowTests();
+
+        // Begin UART listening loop
+        _ubxProcessor();
+
+        return Promise(function(resolve, reject) {
+            assist.writeAssistNow(_createPayload(assistOfflineMsgs), function(err) {
+                // Check that no errors were returned
+                assertTrue(err != null, "short timeout did not contain errors");
+                assertEqual(UBLOX_ASSIST_NOW_ERROR.GNSS_ASSIST_WRITE_TIMEOUT, err[0].error, "short timeout did not contain expected error");
+                assertEqual(2, err.len(), "short timeout did not contain expected number of errors");
+                assertEqual(0, assistMsgCounter, "short timeout did not contain expected message count");
+                _resetForAssistNowTests();
+                // Reset default timeout
+                assist.setAssistNowWriteTimeout(2);
+                return resolve("writeAssistNow with valid msgs test succeeded");
+            }.bindenv(this));
+
+            // Add test timeout
+            imp.wakeup(5, function() {
+                _resetForAssistNowTests();
+                // Reset default timeout
+                assist.setAssistNowWriteTimeout(2);
+                return reject("writeAssistNow with valid msgs test timed out");
+            }.bindenv(this))
+        }.bindenv(this))
+    }
+
+    function tearDown() {
+        assist = null;
+        ubx    = null;
+        uart   = null;
+        return "Test tear down complete";
+    }
+
 }
 
 
@@ -447,7 +488,3 @@ class DeviceAssistNowTests extends ImpTestCase {
 // binary: b5 62 13 60 08 00 01 00 00 20 00 00 02 00 9e 00
 
 // desc: Error: GNSS Assistance write timed out
-
-
-//    "*.test.nut",
-//    "tests/**/*.test.nut"

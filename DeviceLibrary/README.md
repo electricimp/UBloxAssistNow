@@ -34,6 +34,20 @@ None
 
 A blob.
 
+### writeUtcTimeAssist(*currentYear*) ###
+
+Checks if the imp has a valid UTC time by checking that the year returned by the imp API `date()` method is greater than or equal to the *currentYear* parameter. If time is valid, an MGA-INI-TIME-ASSIST-UTC message is written to u-blox module.
+
+#### Parameters ####
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| *currentYear* | integer | Yes | Current year, ie `2019`. |
+
+#### Return Value ####
+
+Boolean, `true` if imp has a valid date and message was sent, `false` if date was not valid.
+
 ### writeAssistNow(*assistMsgs[, onDone]*) ###
 
 Takes a blob of binary messages, splits them into individual messages that are then written to the u-blox module one at a time asynchonously. If provided the *onDone* callback will be triggered when all messages have been writtin. The *onDone* callback takes one parameter *errors* which is `null` if no errors were encountered otherwise it contains an array of tables.
@@ -60,20 +74,6 @@ The *errors* table will always contain *error* and *payload* and may contain mor
 #### Return Value ####
 
 None.
-
-### writeUtcTimeAssist(*currentYear*) ###
-
-Checks if the imp has a valid UTC time by checking that the year returned by the imp API `date()` method is greater than or equal to the *currentYear* parameter. If time is valid, an MGA-INI-TIME-ASSIST-UTC message is written to u-blox module.
-
-#### Parameters ####
-
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| *currentYear* | integer | Yes | Current year, ie `2019`. |
-
-#### Return Value ####
-
-Boolean, `true` if imp has a valid date and message was sent, `false` if date was not valid.
 
 ### setAssistNowWriteTimeout(*timeout*) ###
 
