@@ -115,4 +115,4 @@ String &mdash; a date formatted as `YYYYMMDD`.
 
 ## License ##
 
-These library is licensed under the [MIT License](./LICENSE).
+These library is licensed under the [MIT License](../LICENSE).

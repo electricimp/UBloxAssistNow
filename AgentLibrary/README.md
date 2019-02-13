@@ -103,7 +103,7 @@ Table &mdash; keys are date strings created via the *dateFormatter*, and values 
 
 ### formatDateString(*year, month, day*) ###
 
-This method takes the year, month and day bytes from the AssistNow payload and returns a date string formatted `YYYYMMDD`. This is the formatter used by [*getOfflineMsgByDate()*](#getofflinemsgbydateofflineresp-dateformatter--logerrors) if one is not specified.
+This method takes the year, month and day bytes from the AssistNow payload and returns a date string formatted `YYYYMMDD`. This is the formatter used by [*getOfflineMsgByDate()*](#getofflinemsgbydateofflineresp-dateformatterlogerrors) if one is not specified.
 
 #### Parameters ####
 
@@ -133,4 +133,4 @@ Nothing.
 
 ## License ##
 
-These library is licensed under the [MIT License](./LICENSE).
+These library is licensed under the [MIT License](../LICENSE).
