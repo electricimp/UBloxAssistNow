@@ -1,79 +1,87 @@
-# UBloxAssistNow #
+# UBloxAssistNow 0.1.0 (Device) #
 
-Device library that manages delivery of the AssistNow messages to the u-blox M8N.
+This device library manages the delivery of AssistNow messages to the u-blox M8N module. AssistNow messages help the M8N get a GPS fix faster. 
 
-**To add this library to your project, add** `#require "UBloxAssistNow.device.lib.nut:0.1.0"` **to the top of your device code.**
+This library depends upon the [UBloxM8N library](https://github.com/electricimp/UBloxM8N). If the UBloxAssistNow library is included, callbacks must not be registered for MGA-ACK (0x1360) and MON-VER (0x0a04) messages using the [UBloxM8N library](https://github.com/electricimp/UBloxM8N). Doing so will throw an exception. The latest MON-VER and MGA-ACK payloads are instead available by calling the class methods [*getMonVer()*](#getmonver) and [*getMgaAck()*](#getmgaack), respectively.
+
+**Note** This library does not handle the storage of offline AssistNow messages, only the transmission of messages to the M8N.
+
+**To include this library in your project, add** `#require "UBloxAssistNow.device.lib.nut:0.1.0"` **at the top of your device code.**
 
 ## Class Usage ##
 
-This device-side library is for managing the writing of u-blox Assist Now messages to the u-blox M8N. Assist Now messages help Ublox M8N get a GPS fix faster. This class is dependent on the UBloxM8N library. If this library is included, message callbacks cannot be registered for MGA-ACK (0x1360) and MON-VER (0x0a04), and doing so with the UBloxM8N library will throw an error. Payload for the latest MON-VER message will be available using Class Method getMonVer.
-
-**Note:** This library does handle the storage of Offline Assist Now messages only the writing of messages to the M8N.
-
 ### Constructor: UBloxAssistNow(*ubx*) ###
 
-Initializes Assist Now library. The constructor will enable ACKs for aiding packets, and register message specific callbacks for MON-VER (0x0a04) and MGA-ACK (0x1360) messages. Users must not register callbacks for these, doing so with the UBloxM8N library will throw an error. The latest MON-VER and MGA-ACK payloads are available by calling class method getMonVer and getMgaAck respectively. During initialization the protocol version will be checked, and an error thrown if an unsupported version is detected.
+Instantiates and initializes the AssistNow library. It will enable ACKs for aiding packets, and register message-specific callbacks for MON-VER (0x0a04) and MGA-ACK (0x1360) messages. Users must not register callbacks for these messages using the [UBloxM8N library](https://github.com/electricimp/UBloxM8N) or an exception will be thrown.
+
+During initialization the protocol version will be checked, and an exception thrown if an unsupported version is detected.
 
 #### Parameters ####
 
-| Parameter | Type | Required | Description |
+| Parameter | Type | Required? | Description |
 | --- | --- | --- | --- |
-| *ubx* | UBloxM8N | Yes | A UBloxM8N intance that has been configured to accept and output UBX messages. |
+| *ubx* | UBloxM8N | Yes | A UBloxM8N instance that has been configured to accept and output UBX messages |
 
 ## Class Methods ##
 
 ### getMonVer() ###
 
-Returns the payload from the last MON-VER message
+This method provides the payload from the last MON-VER message.
 
-#### Parameters ####
+#### Returns ####
 
-None
+Blob &mdash; the message payload.
 
-#### Return Value ####
+### getMgaAck() ###
 
-A blob.
+This method provides the payload from the last MGA-ACK message.
+
+#### Returns ####
+
+Blob &mdash; the message payload.
 
 ### writeUtcTimeAssist(*currentYear*) ###
 
-Checks if the imp has a valid UTC time by checking that the year returned by the imp API `date()` method is greater than or equal to the *currentYear* parameter. If time is valid, an MGA-INI-TIME-ASSIST-UTC message is written to u-blox module.
+This method determines if the imp has a valid UTC time by checking that the year returned by the imp API **date()** method is greater than or equal to the argument passed into the *currentYear* parameter. If time is valid, an MGA-INI-TIME-ASSIST-UTC message is written to u-blox module.
 
 #### Parameters ####
 
-| Parameter | Type | Required | Description |
+| Parameter | Type | Required? | Description |
 | --- | --- | --- | --- |
-| *currentYear* | integer | Yes | Current year, ie `2019`. |
+| *currentYear* | Integer | Yes | The current year, ie. 2019 |
 
-#### Return Value ####
+#### Returns ####
 
-Boolean, `true` if imp has a valid date and message was sent, `false` if date was not valid.
+Boolean &mdash; `true` if imp has a valid date, `false` if the date was not valid.
 
-### writeAssistNow(*assistMsgs[, onDone]*) ###
+### writeAssistNow(*assistMsgs[, onDoneCallback]*) ###
 
-Takes a blob of binary messages, splits them into individual messages that are then written to the u-blox module one at a time asynchonously. If provided the *onDone* callback will be triggered when all messages have been writtin. The *onDone* callback takes one parameter *errors* which is `null` if no errors were encountered otherwise it contains an array of tables.
+This method splits a blob of binary messages into individual messages and writes them to the u-blox module one at a time asynchronously. If provided, the onDone callback will be triggered when all the messages have been sent.
 
 #### Parameters ####
 
-| Parameter | Type | Required | Description |
+| Parameter | Type | Required? | Description |
 | --- | --- | --- | --- |
-| *assistMsgs* | blob | Yes | Takes blob of messages from AssistNow Online web request or the persisted AssistNow Offline messages for today's date. |
-| *onDone* | function | No | A callback function that is triggered when all assist messages have been written to the M8N. This function has one parameter *errors*, which is null if no errors were encountered when writing messages to the M8N or a array of tables if an error was encountered. (**see below**)|
+| *assistMsgs* | Blob | Yes | Messages from AssistNow web service, or persisted AssistNow Offline messages for today’s date |
+| *onDoneCallback* | Function | No | A function that is triggered when all of the messages have been sent to the M8N. It has one parameter, *errors*, which will be `null` if no errors were encountered during writing, or [an array of tables](#errors-table) if an error was encountered |
 
-The *errors* table will always contain *error* and *payload* and may contain more keys:
+#### Errors Table ####
 
-| Key | Type | Optional | Description |
+The *errors* table will always contain *error* and *payload* keys.
+
+| Key | Type | Always&mdash;Included? | Description |
 | --- | --- | --- |--- |
-| *error* | String | No | Error message for the type of error encountered |
-| *payload* | Blob | No | The raw MGA-ACK message payload |
-| *type* | Integer | Yes | Type of acknowledgment. 0 = Message not used by receiver, 1 = Message accepted by receiver |
-| *version* | Integer | Yes | Message version (0x00 for M8N) |
-| *infoCode* | Integer | Yes | What the receiver chose to do with the message contents. <br>0 =  The receiver accepted the data, <br>1 = The receiver doesn't know the time so can't use the data, <br>2 = The message version is not supported by the receiver, <br>3 = The message size does not match the message version, <br>4 = The message data could not be stored to the database, <br>5 = The receiver is not ready to use the message data, <br>6 = The message type is unknown |
-| *msgId* | Integer | Yes | UBX message ID of the ACK'ed message |
-| *msgId* | Blob | Yes | The first 4 bytes of the ACK'ed message's payload |
+| *error* | String | Yes | Error message for the type of error encountered |
+| *payload* | Blob | Yes | The raw MGA-ACK message payload |
+| *type* | Integer | No | Type of acknowledgment:<br />0 = Message not used by receiver<br />1 = Message accepted by receiver |
+| *version* | Integer | No | Message version (0x00 for M8N) |
+| *infoCode* | Integer | No | What the receiver did with the message contents:<br />0 =  The receiver accepted the data<br />1 = The receiver doesn’t know the time so can’t use the data<br />2 = The message version is not supported<br />3 = The message size does not match the message version<br />4 = The message data could not be stored in the database<br />5 = The receiver is not ready to use the message data<br />6 = The message type is unknown |
+| *msgId* | Integer | No | UBX message ID of the ACK’d message |
+| *msgId* | Blob | No | The first four bytes of the ACK’d message’s payload |
 
-#### Return Value ####
+#### Returns ####
 
-None.
+Nothing.
 
 ### setAssistNowWriteTimeout(*timeout*) ###
 
@@ -91,16 +99,20 @@ None.
 
 ### getDateString(*[dateTable]*) ###
 
-Uses the table returned by the imp API `date()` method to create a date string formatted YYYYMMDD. This is the same date formatter used by default in the UBloxAssistNow agent library to organize Offline Assist Now messages by date.
+This method takes the output of the Squirrel **date()** function and generates a date string formatted `YYYYMMDD`. This is the same date formatter used by default in the UBloxAssistNow agent library to organize Offline AssistNow messages by date.
 
-**Note:** This method does not check if the imp has a valid UTC time.
+**Note** This method does not check if the imp has a valid UTC time.
 
 #### Parameters ####
 
-| Parameter | Type | Required | Description |
+| Parameter | Type | Required? | Description |
 | --- | --- | --- | --- |
-| *dateTable* | table | No | Table returned by calling imp API `date()` method. |
+| *dateTable* | Table | No | Table returned by the Squirrel **date()** method |
 
 #### Return Value ####
 
-String, date fromatted YYYYMMDD.
+String &mdash; a date formatted as `YYYYMMDD`.
+
+## License ##
+
+These library is licensed under the [MIT License](./LICENSE).
