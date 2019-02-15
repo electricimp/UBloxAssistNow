@@ -26,7 +26,7 @@
 // ----------------------------------------------------------------------------------------
 
 #require "UBloxM8N.device.lib.nut:1.0.1"
-#require "UbxMsgParser.lib.nut:1.0.1"
+#require "UbxMsgParser.lib.nut:2.0.0"
 #require "UBloxAssistNow.device.lib.nut:0.1.0"
 #require "SPIFlashFileSystem.device.lib.nut:2.0.0"
 #require "ConnectionManager.lib.nut:3.1.0"
@@ -89,6 +89,10 @@ Logger <- {
     },
 
     "formatObj" : function(obj) {
+        // Note: At the time of publishing this example, there is a known issue
+        // with encoding some binary strings or blobs. Certian characters at the end
+        // of the data can cause the JSONEncode library to throw a runtime error. An
+        // issue has been filed to address this in the JSONEncode library.
         return JSONEncode.encode(obj);
     },
 

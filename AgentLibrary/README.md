@@ -51,7 +51,7 @@ If the device is online, use this method to get data from AssistNow to improve y
 | *filteronpos* | None | None | None | If this key is present in table, the ephemeris data returned will only contain information for the satellites which are likely to be visible from the approximate position provided (see the *lat*, *lon*, *alt* and *pacc* parameters). If an approximate position is not provided, no filtering will be performed |
 | *filteronsv* | Array of strings | &nbsp; | None | An array of u-blox gnssId:svId pairs. The ephemeris data returned will only contain data for the listed satellites |
 
-**Note** To maintain accuracy, we recommended you use strings rather than float values for the *lat*, *lon*, *alt*, *pacc*, *tacc* and *latency* parameters. Floats will be rounded to five decimal places and will be internally converted to strings using `format("%f", floatVal)`.
+**Note** To maintain accuracy, we recommended you use strings rather than float values for the *lat*, *lon*, *alt*, *pacc*, *tacc* and *latency* parameters. Floats will be converted to strings using `format("%f", floatVal)`.
 
 #### Returns ####
 
@@ -59,7 +59,7 @@ Nothing.
 
 ### requestOffline(*reqParams, reqCallback*) ###
 
-If the device is likely to have connection issues, use this when the device is online to download data from the AssistNow Offline Service, specifying the time period (one to five weeks) and the type(s) of GNSS to use so your device can estimate the positions of the satellites when no live data is available. The data returned will need to be stored in the device’s Flash and transferred to the u-blox receiver for use. Using these estimates does not provide as accurate a position fix as if current ephemeris data is used, but it allows much faster Time To First Fix (TTFF) in nearly all cases. 
+If the device is likely to have connection issues, use this when the device is online to download data from the AssistNow Offline Service, specifying the time period (one to five weeks) and the type(s) of GNSS to use so your device can estimate the positions of the satellites when no live data is available. The data returned will need to be stored in the device’s Flash and transferred to the u-blox receiver for use. Using these estimates does not provide as accurate a position fix as if current ephemeris data is used, but it allows much faster Time To First Fix (TTFF) in nearly all cases.
 
 The data obtained from AssistNow is organized by date, normally a day at a time. Consequently the more weeks for which coverage is requested, the larger the amount of data your application will need to manage and store. Similarly, each different GNSS requires its own data. In extreme cases, the service may provide several hundred kilobytes of data. This volume of data can be reduced by requesting a lower resolution, but this has a small negative impact on both position accuracy and TTFF. Server-side data is updated daily or twice daily.
 
@@ -67,7 +67,7 @@ The data obtained from AssistNow is organized by date, normally a day at a time.
 
 | Parameter | Type | Required? | Description |
 | --- | --- | --- | --- |
-| *reqParams* | Table | Yes | Table of request parameters. Must contain a *gnss*, all other values are optional *([see below](#offline-request-parameters))* | 
+| *reqParams* | Table | Yes | Table of request parameters. Must contain a *gnss*, all other values are optional *([see below](#offline-request-parameters))* |
 | *reqCallback* | Function | Yes | Function that will be triggered when the response from AssistNow is received *([see ‘Request Callbacks’ for details](#request-callbacks))* |
 
 #### Offline Request Parameters ####
@@ -85,7 +85,7 @@ The data obtained from AssistNow is organized by date, normally a day at a time.
 
 Nothing.
 
-### getOfflineMsgByDate(*offlineResp[, dateFormatter][,logErrors]*) ###
+### getOfflineMsgByDate(*offlineResp[, dateFormatter][, logErrors]*) ###
 
 This method takes the response from [*requestOffline()*](#requestofflinereqparams-reqcallback) and returns a table of UBX-MGA-ANO assist messages organized by date.
 
@@ -103,7 +103,7 @@ Table &mdash; keys are date strings created via the *dateFormatter*, and values 
 
 ### formatDateString(*year, month, day*) ###
 
-This method takes the year, month and day bytes from the AssistNow payload and returns a date string formatted `YYYYMMDD`. This is the formatter used by [*getOfflineMsgByDate()*](#getofflinemsgbydateofflineresp-dateformatterlogerrors) if one is not specified.
+This method takes the year, month and day bytes from the AssistNow payload and returns a date string formatted `YYYYMMDD`. This is the formatter used by [*getOfflineMsgByDate()*](#getofflinemsgbydateofflineresp-dateformatter-logerrors) if one is not specified.
 
 #### Parameters ####
 

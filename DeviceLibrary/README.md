@@ -1,8 +1,8 @@
 # UBloxAssistNow 0.1.0 (Device) #
 
-This device library manages the delivery of AssistNow messages to the u-blox M8N module. AssistNow messages help the M8N get a GPS fix faster. 
+This device library manages the delivery of AssistNow messages to the u-blox M8N module. AssistNow messages help the M8N get a GPS fix faster.
 
-This library depends upon the [UBloxM8N library](https://github.com/electricimp/UBloxM8N). If the UBloxAssistNow library is included, callbacks must not be registered for MGA-ACK (0x1360) and MON-VER (0x0a04) messages using the [UBloxM8N library](https://github.com/electricimp/UBloxM8N). Doing so will throw an exception. The latest MON-VER and MGA-ACK payloads are instead available by calling the class methods [*getMonVer()*](#getmonver) and [*getMgaAck()*](#getmgaack), respectively.
+This library depends upon the [UBloxM8N library](https://github.com/electricimp/UBloxM8N). If the UBloxAssistNow library is included, callbacks must not be registered for MGA-ACK (0x1360) and MON-VER (0x0a04) messages using the [UBloxM8N library](https://github.com/electricimp/UBloxM8N). Doing so will throw an exception. The latest MON-VER payload is available by calling the class method [*getMonVer()*](#getmonver). MGA-ACK (0x1360) messages will be processed by the library. If errors found in the MGA-ACK messages, they will be passed to the [*writeAssistNow()*](#writeassistnowassistmsgs-ondonecallback) method's *onDoneCallback*.
 
 **Note** This library does not handle the storage of offline AssistNow messages, only the transmission of messages to the M8N.
 
@@ -27,14 +27,6 @@ During initialization the protocol version will be checked, and an exception thr
 ### getMonVer() ###
 
 This method provides the payload from the last MON-VER message.
-
-#### Returns ####
-
-Blob &mdash; the message payload.
-
-### getMgaAck() ###
-
-This method provides the payload from the last MGA-ACK message.
 
 #### Returns ####
 
