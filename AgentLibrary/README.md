@@ -113,7 +113,7 @@ This method takes the year, month and day bytes from the AssistNow payload and r
 | *month* | Integer | Yes | Month from the AssistNow message |
 | *day* | Integer | Yes | Day from the AssistNow message |
 
-#### Return Value ####
+#### Returns ####
 
 String &mdash; a date formatted as `YYYYMMDD`.
 
@@ -127,7 +127,7 @@ By default there are no HTTP request headers set, and the imp API’s defaults w
 | --- | --- | --- | --- |
 | *headers* | Table | Yes | Table of HTTP headers |
 
-#### Return Value ####
+#### Returns ####
 
 Nothing.
 

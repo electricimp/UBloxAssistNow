@@ -85,9 +85,9 @@ Controls the maximum time to wait for an ACK before writing next Assist Now mess
 | --- | --- | --- | --- |
 | *timeout* | integer/float | Yes | Maximum time to wait for an Assist Now ACK. |
 
-#### Return Value ####
+#### Returns ####
 
-None.
+Nothing.
 
 ### getDateString(*[dateTable]*) ###
 
@@ -101,7 +101,7 @@ This method takes the output of the Squirrel **date()** function and generates a
 | --- | --- | --- | --- |
 | *dateTable* | Table | No | Table returned by the Squirrel **date()** method |
 
-#### Return Value ####
+#### Returns ####
 
 String &mdash; a date formatted as `YYYYMMDD`.
 
