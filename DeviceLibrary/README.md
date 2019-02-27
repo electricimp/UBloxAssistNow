@@ -32,15 +32,9 @@ This method provides the payload from the last MON-VER message.
 
 Blob &mdash; the message payload.
 
-### writeUtcTimeAssist(*currentYear*) ###
+### writeUtcTimeAssist() ###
 
-This method determines if the imp has a valid UTC time by checking that the year returned by the imp API **date()** method is greater than or equal to the argument passed into the *currentYear* parameter. If time is valid, an MGA-INI-TIME-ASSIST-UTC message is written to u-blox module.
-
-#### Parameters ####
-
-| Parameter | Type | Required? | Description |
-| --- | --- | --- | --- |
-| *currentYear* | Integer | Yes | The current year, ie. 2019 |
+This method determines if the imp has a valid UTC time by checking that the year returned by the imp API **date()** method is greater than or equal to 2019. If time is valid, an MGA-INI-TIME-ASSIST-UTC message is written to u-blox module.
 
 #### Returns ####
 

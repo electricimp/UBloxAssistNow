@@ -43,7 +43,8 @@ enum UBLOX_ASSIST_NOW_CONST {
     CFG_NAVX5_MSG_MASK_1_SET_ASSIST_ACK  = 0x0400,
     CFG_NAVX5_MSG_ENABLE_ASSIST_ACK      = 0x01,
 
-    DEFAULT_WRITE_TIMEOUT                = 2
+    DEFAULT_WRITE_TIMEOUT                = 2,
+    VALID_TIME_STAMP_YEAR                = 2019
 }
 
 enum UBLOX_ASSIST_NOW_ERROR {
@@ -186,13 +187,15 @@ class UBloxAssistNow {
      * Checks if the imp has a valid UTC time using the current year parameter. If time
      * is valid, an MGA_INI_TIME_ASSIST_UTC message is written to u-blox module.
      *
-     * @param {integer} currYear - Current year (ie 2019).
      * @return {bool} - if date was valid and assist message was written to u-blox
      */
-    function writeUtcTimeAssist(currYear) {
-        local d = date();
+    function writeUtcTimeAssist() {
+        if (d == null) d = date();
 
-        if (d.year <= currYear) {
+        // Check that the date returned by the imp is a valid timestamp by making sure
+        // the year is greater or equal to 2019 (on cold boot, the imp may not have a
+        // valid timestamp until a connection to the server and will return a year of 2000)
+        if (d.year >= UBLOX_ASSIST_NOW_CONST.VALID_TIME_STAMP_YEAR) {
             // Form UBX-MGA-INI-TIME_UTC message
             local timeAssist = blob(UBLOX_ASSIST_NOW_CONST.MGA_INI_TIME_UTC_LEN);
 

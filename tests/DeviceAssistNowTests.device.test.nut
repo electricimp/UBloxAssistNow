@@ -252,13 +252,10 @@ class DeviceAssistNowTests extends ImpTestCase {
     }
 
     function testWriteUtcTimeAssist() {
-        local validYear = 2019;
-        local invalidYear = 1975;
-
         uart.clearReadBuffer();
         uart.clearWriteBuffer();
 
-        assertTrue(assist.writeUtcTimeAssist(validYear), "writeUtcTimeAssist with valid year returned unexpected value");
+        assertTrue(assist.writeUtcTimeAssist(), "writeUtcTimeAssist with valid year returned unexpected value");
         local expectedTimeAssistPayloadStart = "\xb5\x62\x13\x40\x18\x00\x10";
         local buff = uart.getWriteBuffer();
         assertEqual(32, buff.len(), "writeUtcTimeAssist with valid year didn't write to uart");
@@ -267,13 +264,7 @@ class DeviceAssistNowTests extends ImpTestCase {
         uart.clearReadBuffer();
         uart.clearWriteBuffer();
 
-        assertTrue(!assist.writeUtcTimeAssist(invalidYear), "writeUtcTimeAssist with invalid year returned unexpected value");
-        buff = uart.getWriteBuffer();
-        assertEqual(0, buff.len(), "writeUtcTimeAssist with valid year wrote to uart");
-
-        uart.clearReadBuffer();
-        uart.clearWriteBuffer();
-
+        // Have to replace date method to test invalid date
         return "writeUtcTimeAssist returns expected results";
     }
 
