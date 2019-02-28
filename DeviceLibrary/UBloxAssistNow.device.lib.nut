@@ -190,7 +190,7 @@ class UBloxAssistNow {
      * @return {bool} - if date was valid and assist message was written to u-blox
      */
     function writeUtcTimeAssist() {
-        if (d == null) d = date();
+        local d = date();
 
         // Check that the date returned by the imp is a valid timestamp by making sure
         // the year is greater or equal to 2019 (on cold boot, the imp may not have a
